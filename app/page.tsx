@@ -1,31 +1,95 @@
 "use client";
+
 import { FormEvent, useState } from "react";
-type Result={source:string;sourceClass:string;name:string;type:string;confidence:number;detail:string;meta:string[];href:string};
-type SourceStatus={key:string;name:string;status:"complete"|"unavailable"|"review";count:number;checkedAt:string;message?:string};
-type WebSearch={term:string;label:string;query:string;href:string};
-const sourceLinks=[
- {key:"EU",name:"European Union",detail:"Financial sanctions",href:"https://data.europa.eu/data/datasets/consolidated-list-of-persons-groups-and-entities-subject-to-eu-financial-sanctions?locale=en"},
- {key:"UN",name:"United Nations",detail:"Security Council list",href:"https://main.un.org/securitycouncil/en/content/un-sc-consolidated-list"},
- {key:"MT",name:"Malta ARB",detail:"Court orders",href:"https://assetrecovery.mt/court-orders/"},
- {key:"WEB",name:"Google web checks",detail:"Adverse media & eCourts",href:"https://www.google.com/"},
-];
+
+type Result = { source:string; sourceClass:string; name:string; type:string; confidence:number; detail:string; meta:string[]; href:string };
+type SourceStatus = { key:string; name:string; status:"complete"|"unavailable"|"review"; count:number; checkedAt:string; message?:string };
+type WebSearch = { term:string; label:string; query:string; href:string };
+
 export default function Home(){
- const[query,setQuery]=useState("Mario Gauci"),[screened,setScreened]=useState("Mario Gauci"),[results,setResults]=useState<Result[]>([]),[sources,setSources]=useState<SourceStatus[]>([]),[webSearches,setWebSearches]=useState<WebSearch[]>([]),[activeWeb,setActiveWeb]=useState(0),[loading,setLoading]=useState(false),[searched,setSearched]=useState(false),[error,setError]=useState("");
- async function screen(e:FormEvent){e.preventDefault();const clean=query.trim();if(!clean)return;setLoading(true);setError("");try{const response=await fetch(`/api/screen?q=${encodeURIComponent(clean)}`),data=await response.json();if(!response.ok)throw new Error(data.error||"Screening could not be completed.");setScreened(clean);setResults(data.matches||[]);setSources(data.sources||[]);setWebSearches(data.webSearches||[]);setActiveWeb(0);setSearched(true)}catch(err){setError(err instanceof Error?err.message:"Screening could not be completed.")}finally{setLoading(false)}}
- const initials=screened.split(/\s+/).slice(0,2).map(n=>n[0]).join("").toUpperCase(),incomplete=sources.some(s=>s.status==="unavailable"),webReview=sources.some(s=>s.status==="review"),completed=sources.filter(s=>s.status==="complete").length;
- return <main>
-  <header className="topbar"><a className="brand" href="#top" aria-label="ClearCheck home"><span className="brandMark">C</span><span>ClearCheck</span></a><div className="headerRight"><span className="sourceCount"><i/> 4 screening sources</span><button className="avatar" aria-label="Account">NG</button></div></header>
-  <section className="hero" id="top"><div className="eyebrow">AML &amp; SANCTIONS SCREENING</div><h1>Screen with clarity.<br/><em>Decide with confidence.</em></h1><p className="intro">Search official EU, UN and Maltese records, then review focused Google searches for adverse media and eCourts mentions.</p><form className="search" onSubmit={screen}><span className="searchIcon">⌕</span><input value={query} onChange={e=>setQuery(e.target.value)} aria-label="Person or company name" placeholder="Enter a person or company name"/><button type="submit" disabled={loading}>{loading?"Checking sources…":"Run screening"}<span>→</span></button></form><div className="searchHints"><span>Search by full legal name for the best result</span><span>3 live lists + 4 Google checks</span></div>{error&&<div className="searchError">{error}</div>}</section>
-  <section className="workspace"><aside><div className="sideTitle"><span>SCREENING SOURCES</span><span>4</span></div>{sourceLinks.map(s=>{const live=sources.find(x=>x.key===s.key);return <a className="source" href={s.href} target="_blank" rel="noreferrer" key={s.key}><span className={`sourceBadge ${s.key.toLowerCase()}`}>{s.key}</span><span className="sourceText"><strong>{s.name}</strong><small>{s.detail}</small></span><span className={`tick ${live?.status==="unavailable"?"failed":live?.status==="review"?"review":""}`}>{loading?"…":live?.status==="unavailable"?"!":live?.status==="review"?"↗":live?"✓":"○"}</span></a>})}<div className="updated"><span>↻</span><div><strong>Live + review checks</strong><small>Google searches open for manual review</small></div></div></aside>
-   <div className="results"><div className="resultHead"><div><span className="overline">SCREENING RESULT</span><h2>{screened}</h2></div><button className="export" onClick={()=>window.print()}>↓ &nbsp;Export report</button></div>
-    <div className={`decision ${results.length||incomplete||webReview?"review":"clear"}`}><div className="decisionIcon">{results.length||incomplete||webReview?"!":"✓"}</div><div><strong>{!searched?"Ready to screen":incomplete?"Screening incomplete":results.length?"Potential match found":"Google review required"}</strong><p>{!searched?"Enter a name above to check every source.":incomplete?"At least one source could not be checked. Do not treat this result as clear.":results.length?"Review the official matches and Google searches below.":"No list matches found. Open the four Google searches below before closing the review."}</p></div><span className="decisionTag">{!searched?"NOT RUN":incomplete?"INCOMPLETE":results.length?`${results.length} MATCHES`:"WEB REVIEW"}</span></div>
-    <div className="summaryGrid"><div className="identity"><span className="initials">{initials}</span><div><small>SCREENED NAME</small><strong>{screened}</strong><span>Person or entity</span></div></div><div className="stat"><small>LIVE LISTS CHECKED</small><strong>{completed} <span>/ 3</span></strong><i>{searched&&completed===3?"Complete":"Not complete"}</i></div><div className="stat"><small>LIST MATCHES</small><strong>{results.length}</strong><i>{results.length?"Needs review":"None found"}</i></div></div>
-    {searched&&<div className="sourceReport">{sources.map(s=><div className={s.status} key={s.key}><span className={`sourceBadge ${s.key.toLowerCase()}`}>{s.key}</span><div><strong>{s.name}</strong><small>{s.status==="complete"?`${s.count} match${s.count===1?"":"es"} · checked ${new Date(s.checkedAt).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}`:s.message||"Could not be checked"}</small></div><b>{s.status==="complete"?"✓":s.status==="review"?"↗":"!"}</b></div>)}</div>}
-    {webSearches.length>0&&<div className="webChecks"><div className="sectionLine"><strong>Google web intelligence</strong><span>All four searches loaded inside this report</span></div><div className="webTabs" role="tablist" aria-label="Google screening searches">{webSearches.map((w,i)=><button type="button" role="tab" aria-selected={activeWeb===i} className={activeWeb===i?"active":""} onClick={()=>setActiveWeb(i)} key={w.term}><span>G</span><div><strong>{w.label}</strong><small>{w.query}</small></div></button>)}</div><div className="googleFrames">{webSearches.map((w,i)=><iframe className={activeWeb===i?"active":""} src={w.href} title={`Google results for ${w.query}`} loading="eager" referrerPolicy="no-referrer-when-downgrade" key={w.term}/>)}</div><p className="webNote">These are live Google results displayed inside ClearCheck. Search results may refer to another person with the same name and are not proof of wrongdoing; verify each relevant mention against reliable sources.</p></div>}
-    {results.length>0?<div className="matches"><div className="sectionLine"><strong>Potential matches</strong><span>Similarity is not proof of identity</span></div>{results.map((r,i)=><article className="match" key={`${r.source}-${i}`}><div className="matchTop"><span className={`sourceBadge ${r.sourceClass}`}>{r.source}</span><div><h3>{r.name}</h3><span>{r.type}</span></div><div className="confidence"><strong>{r.confidence}%</strong><small>NAME MATCH</small></div></div><p>{r.detail}</p><div className="chips">{r.meta.map((m,j)=><span key={`${m}-${j}`}>{m}</span>)}</div><a href={r.href} target="_blank" rel="noreferrer">Open official evidence <span>↗</span></a></article>)}</div>:searched?<div className="empty"><span className="emptyIcon">⌕</span><div><h3>Nothing flagged for this search</h3><p>Try an alternative spelling. A name-only search must still be verified with other identifiers before closing your review.</p></div></div>:null}
-    <div className="notice"><span>i</span><p><strong>Screening is a starting point, not a final decision.</strong> A clear result does not guarantee that a person is not subject to restrictions. Always verify possible matches using dates of birth, nationality, identification numbers and the linked official record.</p></div>
-   </div>
-  </section>
-  <footer><span>ClearCheck</span><p>Independent screening workspace · Data belongs to the respective official publishers</p><div><a href="https://main.un.org/securitycouncil/en/content/un-sc-consolidated-list">UN list</a><a href="https://assetrecovery.mt/court-orders/">Malta ARB</a></div></footer>
- </main>
+  const [query,setQuery]=useState("");
+  const [screened,setScreened]=useState("");
+  const [results,setResults]=useState<Result[]>([]);
+  const [sources,setSources]=useState<SourceStatus[]>([]);
+  const [webSearches,setWebSearches]=useState<WebSearch[]>([]);
+  const [activeWeb,setActiveWeb]=useState(0);
+  const [loading,setLoading]=useState(false);
+  const [searched,setSearched]=useState(false);
+  const [error,setError]=useState("");
+
+  async function screen(e:FormEvent){
+    e.preventDefault();
+    const clean=query.trim();
+    if(!clean)return;
+    setLoading(true);setError("");
+    try{
+      const response=await fetch(`/api/screen?q=${encodeURIComponent(clean)}`);
+      const data=await response.json();
+      if(!response.ok)throw new Error(data.error||"Screening could not be completed.");
+      setScreened(clean);setResults(data.matches||[]);setSources(data.sources||[]);setWebSearches(data.webSearches||[]);setActiveWeb(0);setSearched(true);
+      window.scrollTo({top:0,behavior:"smooth"});
+    }catch(err){setError(err instanceof Error?err.message:"Screening could not be completed.")}
+    finally{setLoading(false)}
+  }
+
+  function goHome(){setSearched(false);setQuery("");setError("");window.scrollTo({top:0,behavior:"smooth"})}
+
+  const initials=screened.split(/\s+/).slice(0,2).map(n=>n[0]).join("").toUpperCase();
+  const incomplete=sources.some(s=>s.status==="unavailable");
+  const webReview=sources.some(s=>s.status==="review");
+  const completed=sources.filter(s=>s.status==="complete").length;
+
+  if(!searched){
+    return <main className="homePage">
+      <Header onHome={goHome}/>
+      <section className="homeHero" id="top">
+        <div className="homeHeroInner">
+          <div className="eyebrow">ONE SEARCH · MULTIPLE AML SOURCES</div>
+          <h1>Know who you’re<br/><em>doing business with.</em></h1>
+          <p>Screen a person or company against EU and UN sanctions, Maltese court orders, and focused web-intelligence searches—all from one place.</p>
+          <form className="search homeSearch" onSubmit={screen}>
+            <span className="searchIcon">⌕</span>
+            <input autoFocus value={query} onChange={e=>setQuery(e.target.value)} aria-label="Person or company name" placeholder="Enter a full name or company name"/>
+            <button type="submit" disabled={loading}>{loading?"Screening all sources…":"Screen this name"}<span>→</span></button>
+          </form>
+          <div className="homeHints"><span>Use the full legal name for the most accurate result</span><span>Results usually take 20–40 seconds</span></div>
+          {loading&&<div className="screenProgress"><i/><span>Checking EU sanctions, UN sanctions, Malta court orders and web intelligence…</span></div>}
+          {error&&<div className="searchError">{error}</div>}
+        </div>
+      </section>
+      <section className="homeInfo">
+        <div className="infoIntro"><span className="overline">WHAT CLEARCHECK DOES</span><h2>One search. A clearer risk picture.</h2><p>ClearCheck brings fragmented public screening sources into one structured review. It helps you find potential matches quickly while keeping the official evidence close at hand.</p></div>
+        <div className="infoCards">
+          <article><span>01</span><h3>Official sanctions</h3><p>Checks current EU and United Nations consolidated sanctions data for matching names and aliases.</p></article>
+          <article><span>02</span><h3>Malta court orders</h3><p>Searches the Asset Recovery Bureau register for freezing, seizing and related court orders.</p></article>
+          <article><span>03</span><h3>Web intelligence</h3><p>Loads focused searches for fraud, eCourts, money laundering and financial crime mentions.</p></article>
+        </div>
+        <div className="trustStrip"><div><strong>Built for careful review</strong><span>Every potential match links back to its original source.</span></div><div><strong>No automatic accusations</strong><span>A similar name is a lead to verify, never proof of wrongdoing.</span></div><div><strong>Source-by-source status</strong><span>You can see if any source was unavailable during a search.</span></div></div>
+      </section>
+      <Footer/>
+    </main>
+  }
+
+  return <main className="reportPage">
+    <Header onHome={goHome}/>
+    <section className="resultSearchBar">
+      <form className="search compactSearch" onSubmit={screen}><span className="searchIcon">⌕</span><input value={query} onChange={e=>setQuery(e.target.value)} aria-label="Person or company name"/><button type="submit" disabled={loading}>{loading?"Checking…":"New screening"}<span>→</span></button></form>
+      {error&&<div className="searchError">{error}</div>}
+    </section>
+    <section className="workspace reportWorkspace">
+      <div className="results">
+        <div className="resultHead"><div><span className="overline">SCREENING RESULT</span><h2>{screened}</h2></div><div className="resultActions"><button className="backHome" onClick={goHome}>← Home</button><button className="export" onClick={()=>window.print()}>↓ &nbsp;Export report</button></div></div>
+        <div className={`decision ${results.length||incomplete||webReview?"review":"clear"}`}><div className="decisionIcon">{results.length||incomplete||webReview?"!":"✓"}</div><div><strong>{incomplete?"Screening incomplete":results.length?"Potential match found":"Web review required"}</strong><p>{incomplete?"At least one source could not be checked. Do not treat this result as clear.":results.length?"Review the official matches and web searches below.":"No list matches found. Review the web-intelligence searches below before closing the case."}</p></div><span className="decisionTag">{incomplete?"INCOMPLETE":results.length?`${results.length} MATCHES`:"WEB REVIEW"}</span></div>
+        <div className="summaryGrid"><div className="identity"><span className="initials">{initials}</span><div><small>SCREENED NAME</small><strong>{screened}</strong><span>Person or entity</span></div></div><div className="stat"><small>LIVE LISTS CHECKED</small><strong>{completed} <span>/ 3</span></strong><i>{completed===3?"Complete":"Not complete"}</i></div><div className="stat"><small>LIST MATCHES</small><strong>{results.length}</strong><i>{results.length?"Needs review":"None found"}</i></div></div>
+        <div className="sourceReport">{sources.map(s=><div className={s.status} key={s.key}><span className={`sourceBadge ${s.key.toLowerCase()}`}>{s.key}</span><div><strong>{s.name}</strong><small>{s.status==="complete"?`${s.count} match${s.count===1?"":"es"} · checked ${new Date(s.checkedAt).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}`:s.message||"Could not be checked"}</small></div><b>{s.status==="complete"?"✓":s.status==="review"?"↗":"!"}</b></div>)}</div>
+        {results.length>0?<div className="matches"><div className="sectionLine"><strong>Potential official-list matches</strong><span>Similarity is not proof of identity</span></div>{results.map((r,i)=><article className="match" key={`${r.source}-${i}`}><div className="matchTop"><span className={`sourceBadge ${r.sourceClass}`}>{r.source}</span><div><h3>{r.name}</h3><span>{r.type}</span></div><div className="confidence"><strong>{r.confidence}%</strong><small>NAME MATCH</small></div></div><p>{r.detail}</p><div className="chips">{r.meta.map((m,j)=><span key={`${m}-${j}`}>{m}</span>)}</div><a href={r.href} target="_blank" rel="noreferrer">Open official evidence <span>↗</span></a></article>)}</div>:<div className="empty"><span className="emptyIcon">⌕</span><div><h3>No official-list matches found</h3><p>Continue with the web-intelligence review below. Try alternative spellings where appropriate.</p></div></div>}
+        {webSearches.length>0&&<div className="webChecks"><div className="sectionLine"><strong>Web intelligence</strong><span>Four focused searches loaded in this report</span></div><div className="webTabs" role="tablist" aria-label="Web screening searches">{webSearches.map((w,i)=><button type="button" role="tab" aria-selected={activeWeb===i} className={activeWeb===i?"active":""} onClick={()=>setActiveWeb(i)} key={w.term}><span>G</span><div><strong>{w.label}</strong><small>{w.query}</small></div></button>)}</div><div className="googleFrames">{webSearches.map((w,i)=><iframe className={activeWeb===i?"active":""} src={w.href} title={`Google results for ${w.query}`} loading="eager" referrerPolicy="no-referrer-when-downgrade" key={w.term}/>)}</div><p className="webNote">Live search results may concern another person with the same name and are not proof of wrongdoing. Robot checks are controlled by Google and cannot be bypassed by ClearCheck.</p></div>}
+        <div className="notice"><span>i</span><p><strong>Screening is a starting point, not a final decision.</strong> A clear list result does not guarantee that a person is not subject to restrictions. Verify possible matches using dates of birth, nationality, identification numbers and official evidence.</p></div>
+      </div>
+    </section>
+    <Footer/>
+  </main>
 }
+
+function Header({onHome}:{onHome:()=>void}){return <header className="topbar"><button className="brand brandButton" onClick={onHome} aria-label="ClearCheck home"><span className="brandMark">C</span><span>ClearCheck</span></button><div className="headerRight"><span className="sourceCount"><i/> AML screening workspace</span><span className="privateLabel">PRIVATE BETA</span></div></header>}
+function Footer(){return <footer><span>ClearCheck</span><p>Independent screening workspace · Data belongs to the respective official publishers</p><div><span>AML screening</span><span>Private beta</span></div></footer>}
