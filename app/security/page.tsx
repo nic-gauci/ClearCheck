@@ -1,0 +1,10 @@
+import LegalPage from "../LegalPage";
+
+export default function SecurityPage(){return <LegalPage eyebrow="SECURITY & RELIABILITY" title="How ClearCheck protects the workspace" intro="Current controls and the checks required before commercial launch.">
+  <h2>Identity and access</h2><p>Supabase Auth manages password sessions and verified email identities. Every database request is restricted by organisation membership and role. Screening endpoints verify the signed-in user on the server; hiding a button in the browser is never treated as access control.</p>
+  <h2>Tenant isolation</h2><p>Postgres row-level security isolates profiles, organisations, team membership, screenings, reports, credits, retention settings and deletion requests. Billing and webhook tables have no client access. Privileged billing operations require a server-only Supabase secret.</p>
+  <h2>Auditability</h2><p>Completed screenings, credit use, report downloads and account creation create timestamped audit events. Case references and the exact source response snapshot are retained so a reviewer can reopen the recorded result.</p>
+  <h2>Payments</h2><p>Stripe Checkout and the Stripe customer portal keep card entry and payment-method management off ClearCheck pages. Webhook signatures and idempotency records protect credit grants from forged or repeated events. Live charging remains disabled until secrets and price IDs are configured.</p>
+  <h2>Monitoring and recovery</h2><p>A minimal health endpoint is available for uptime monitoring, application errors avoid disclosing credentials, and database security and performance advisors are reviewed after schema changes. Production launch requires an upgraded backup policy appropriate to the service, restore testing, alerting, a documented incident process and leaked-password protection.</p>
+  <h2>Responsible disclosure</h2><p>A dedicated security contact and response target will be published with the operator’s final company details before public launch. Do not include passwords, sanctions results or personal data in an initial vulnerability report.</p>
+</LegalPage>}

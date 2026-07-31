@@ -1,0 +1,10 @@
+import LegalPage from "../LegalPage";
+
+export default function ProvidersPage(){return <LegalPage eyebrow="DATA COVERAGE" title="Sources and licensing" intro="What ClearCheck checks now, and what must be licensed before a commercial product is offered.">
+  <h2>European Union</h2><p>The beta checks the European Commission’s consolidated financial-sanctions data and EU Sanctions Tracker, with links back to official evidence. EUR-Lex and the Official Journal remain the authoritative legal record.</p>
+  <h2>United Nations</h2><p>The beta checks the UN Security Council Consolidated List XML published by the United Nations and links reviewers to the official consolidated-list page.</p>
+  <h2>Malta</h2><p>The beta queries court-order results published by Malta’s Asset Recovery Bureau. Reviewers must open the publisher’s document and confirm that identifiers match the screened subject.</p>
+  <h2>Web intelligence</h2><p>Four structured Google queries are prepared for fraud, eCourts, money laundering and financial crime. Results are dynamic, can involve namesakes, and require human review. ClearCheck does not bypass robot checks or copy Google result pages into its database. Google’s Custom Search JSON API is closed to new customers and scheduled to end for existing customers in January 2027, so commercial automated adverse-media results require a separately contracted full-web-search provider.</p>
+  <h2>Commercial provider gate</h2><p>The beta uses public official sources for evaluation. A production service that incorporates broad sanctions, PEP or adverse-media datasets will connect only after an appropriate screening or reseller licence is signed. OpenSanctions identifies its reseller licence as the option for products that redistribute its data; its internal screening licence is not a resale licence.</p>
+  <h2>Freshness and failure handling</h2><p>Official sources are fetched at screening time with short technical caches. Each source is marked complete, review or unavailable. An unavailable source makes the overall check incomplete rather than clear.</p>
+</LegalPage>}

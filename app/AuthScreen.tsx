@@ -38,7 +38,8 @@ export default function AuthScreen({mode}:{mode:AuthMode}){
       }else{
         const {error:signInError}=await supabase.auth.signInWithPassword({email,password});
         if(signInError)throw signInError;
-        window.location.assign("/account");
+        const requested=new URLSearchParams(window.location.search).get("returnTo")||"/account";
+        window.location.assign(requested.startsWith("/")&&!requested.startsWith("//")?requested:"/account");
       }
     }catch(caught){setError(caught instanceof Error?friendlyAuthError(caught.message):"Account access could not be completed.")}
     finally{setLoading(false)}
@@ -90,7 +91,7 @@ export default function AuthScreen({mode}:{mode:AuthMode}){
             <label>Work email<input name="email" type="email" autoComplete="email" required placeholder="name@company.com" value={email} onChange={event=>setEmail(event.target.value)}/></label>
             <label>Password <span>{registering?"Minimum 8 characters":""}</span><div className="passwordField"><input name="password" type={showPassword?"text":"password"} autoComplete={registering?"new-password":"current-password"} minLength={registering?8:undefined} required placeholder={registering?"Create a secure password":"Enter your password"}/><button type="button" onClick={()=>setShowPassword(value=>!value)} aria-label={showPassword?"Hide password":"Show password"}>{showPassword?"Hide":"Show"}</button></div></label>
             {!registering&&<div className="authOptions"><label><input type="checkbox" name="remember" defaultChecked/> Keep me signed in</label><button type="button" disabled={loading} onClick={resetPassword}>Forgot password?</button></div>}
-            {registering&&<label className="termsCheck"><input type="checkbox" required/><span>I agree to the Terms of Use and Privacy Policy and understand that screening results require human review.</span></label>}
+            {registering&&<label className="termsCheck"><input type="checkbox" required/><span>I agree to the <Link href="/terms" target="_blank">Terms of Use</Link> and <Link href="/privacy" target="_blank">Privacy Policy</Link> and understand that screening results require human review.</span></label>}
             <button className="authSubmit" type="submit" disabled={loading}>{loading?"Please wait…":registering?"Create account":"Log in"}<span>→</span></button>
           </form>
           {error&&<div className="authNotice authError" role="alert"><span>!</span><p>{error}</p></div>}

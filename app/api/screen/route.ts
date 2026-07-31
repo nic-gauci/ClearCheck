@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getBearerToken, getSupabaseForToken } from "../../lib/supabase-server";
 
 export const dynamic = "force-dynamic";
 const EU_CSV = "https://webgate.ec.europa.eu/fsd/fsf/public/files/csvFullSanctionsList_1_1/content?token=dG9rZW4tMjAxNw";
@@ -29,4 +30,49 @@ function tag(block:string,name:string){const m=block.match(new RegExp(`<${name}>
 async function screenUN(query:string){const now=Date.now();if(!unCache||now-unCache.at>CACHE_MS)unCache={text:await fetchText(UN_XML),at:now};const found:Match[]=[],seen=new Set<string>();for(const kind of["INDIVIDUAL","ENTITY"]){const blocks=unCache.text.match(new RegExp(`<${kind}>[\\s\\S]*?<\\/${kind}>`,"gi"))||[];for(const block of blocks){const primary=kind==="INDIVIDUAL"?[tag(block,"FIRST_NAME"),tag(block,"SECOND_NAME"),tag(block,"THIRD_NAME"),tag(block,"FOURTH_NAME")].filter(Boolean).join(" "):tag(block,"FIRST_NAME")||tag(block,"NAME");const aliases=[...block.matchAll(/<ALIAS_NAME>([\s\S]*?)<\/ALIAS_NAME>/gi)].map(m=>m[1].trim()),hit=[primary,...aliases].find(n=>matches(n,query));if(!hit)continue;const ref=tag(block,"REFERENCE_NUMBER")||tag(block,"DATAID");if(seen.has(ref||norm(hit)))continue;seen.add(ref||norm(hit));found.push({source:"UN",sourceClass:"un",name:primary||hit,type:kind==="INDIVIDUAL"?"Individual":"Entity",confidence:score(hit,query),detail:tag(block,"COMMENTS1")||"Name appears in the UN Security Council Consolidated List.",meta:[ref,tag(block,"LISTED_ON"),tag(block,"UN_LIST_TYPE")].filter(Boolean),href:UN_PAGE});if(found.length>=25)break}}return{matches:found,source:{key:"UN",name:"United Nations",status:"complete",count:found.length,checkedAt:new Date().toISOString()} satisfies SourceResult}}
 async function screenMT(query:string){const body=new URLSearchParams({action:"get_court_orders_paginated",name:query,draw:"1",start:"0",length:"100",compilation:"",idno:"",year:""});const text=await fetchText(MT_API,{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body});const data=JSON.parse(text).data||[];const found:Match[]=data.map((r:Record<string,string>)=>{const href=r.document?.match(/href=['"]([^'"]+)/i)?.[1]?.replace(/\\\//g,"/")||MT_PAGE;return{source:"MT",sourceClass:"mt",name:r.names||query,type:"Court-order subject",confidence:score(r.names||query,query),detail:`${r.court_order||"Court"} order published by Malta's Asset Recovery Bureau.`,meta:[r.compilation_number,r.identification_numbers,r.date].filter(Boolean),href}});return{matches:found,source:{key:"MT",name:"Malta ARB",status:"complete",count:found.length,checkedAt:new Date().toISOString()} satisfies SourceResult}}
 
-export async function GET(request:NextRequest){const query=request.nextUrl.searchParams.get("q")?.trim()||"";if(query.length<2||query.length>120)return NextResponse.json({error:"Enter a name between 2 and 120 characters."},{status:400});const jobs=[{key:"EU",name:"European Union",run:()=>screenEU(query)},{key:"UN",name:"United Nations",run:()=>screenUN(query)},{key:"MT",name:"Malta ARB",run:()=>screenMT(query)}],settled=await Promise.allSettled(jobs.map(j=>j.run())),all:Match[]=[],sources:SourceResult[]=[];settled.forEach((result,i)=>{if(result.status==="fulfilled"){all.push(...result.value.matches);sources.push(result.value.source)}else sources.push({key:jobs[i].key,name:jobs[i].name,status:"unavailable",count:0,checkedAt:new Date().toISOString(),message:result.reason instanceof Error?result.reason.message:"Source unavailable"})});const terms=["fraud","eCourts","money laundering","financial crime"],webSearches=terms.map(term=>{const phrase=`\"${query}\" \"${term}\"`;return{term,label:term==="eCourts"?"eCourts":""+term.replace(/\b\w/g,c=>c.toUpperCase()),query:phrase,href:`https://www.google.com/search?igu=1&hl=en&q=${encodeURIComponent(phrase)}`}});sources.push({key:"WEB",name:"Google web checks",status:"review",count:webSearches.length,checkedAt:new Date().toISOString(),message:"Four embedded Google searches loaded below"});return NextResponse.json({query,matches:all,sources,webSearches,complete:false,checkedAt:new Date().toISOString()},{headers:{"Cache-Control":"no-store"}})}
+async function screenOpenSanctions(query:string,subjectType:"person"|"business"){
+  const apiKey=process.env.OPENSANCTIONS_API_KEY;if(!apiKey)throw new Error("Licensed provider is not configured");
+  const response=await fetch("https://api.opensanctions.org/match/sanctions?algorithm=best&threshold=0.7&limit=10",{method:"POST",headers:{Authorization:`ApiKey ${apiKey}`,"Content-Type":"application/json","User-Agent":"ClearCheck/1.0 licensed-screening"},body:JSON.stringify({queries:{q:{schema:subjectType==="person"?"Person":"Company",properties:{name:[query]}}}}),cache:"no-store",signal:AbortSignal.timeout(35000)});
+  if(!response.ok)throw new Error(`Licensed provider returned ${response.status}`);
+  const payload=await response.json() as {responses?:{q?:{results?:Array<{id:string;caption?:string;schema?:string;score?:number;datasets?:string[];properties?:Record<string,string[]>}>}}};
+  const found:Match[]=(payload.responses?.q?.results||[]).map(result=>({source:"OS",sourceClass:"os",name:result.caption||query,type:result.schema||"Watchlist entity",confidence:Math.round((result.score||0)*100),detail:"Potential match returned by the licensed OpenSanctions sanctions collection. Review the linked entity and its original sources.",meta:[...(result.properties?.programId||[]).slice(0,2),...(result.properties?.country||[]).slice(0,1)],href:`https://www.opensanctions.org/entities/${encodeURIComponent(result.id)}/`}));
+  return{matches:found,source:{key:"OS",name:"Licensed sanctions provider",status:"complete",count:found.length,checkedAt:new Date().toISOString(),message:"OpenSanctions licensed matching API checked."} satisfies SourceResult};
+}
+
+export async function GET(request:NextRequest){
+  const token=getBearerToken(request);
+  if(!token)return NextResponse.json({error:"Log in before running a screening."},{status:401});
+  const supabase=getSupabaseForToken(token);
+  const {data:{user},error:userError}=await supabase.auth.getUser(token);
+  if(userError||!user)return NextResponse.json({error:"Your session has expired. Log in again."},{status:401});
+  const {data:membership,error:membershipError}=await supabase.from("organisation_members").select("organisation_id").eq("user_id",user.id).eq("status","active").limit(1).maybeSingle();
+  if(membershipError||!membership)return NextResponse.json({error:"Your organisation workspace is not ready. Contact support."},{status:403});
+
+  const query=request.nextUrl.searchParams.get("q")?.trim()||"";
+  const subjectType=request.nextUrl.searchParams.get("type")==="business"?"business":"person";
+  if(query.length<2||query.length>120)return NextResponse.json({error:"Enter a name between 2 and 120 characters."},{status:400});
+  const jobs=[{key:"EU",name:"European Union",run:()=>screenEU(query)},{key:"UN",name:"United Nations",run:()=>screenUN(query)},{key:"MT",name:"Malta ARB",run:()=>screenMT(query)}];
+  if(process.env.OPENSANCTIONS_API_KEY)jobs.push({key:"OS",name:"Licensed sanctions provider",run:()=>screenOpenSanctions(query,subjectType)});
+  const settled=await Promise.allSettled(jobs.map(job=>job.run())),all:Match[]=[],sources:SourceResult[]=[];
+  settled.forEach((result,index)=>{if(result.status==="fulfilled"){all.push(...result.value.matches);sources.push(result.value.source)}else sources.push({key:jobs[index].key,name:jobs[index].name,status:"unavailable",count:0,checkedAt:new Date().toISOString(),message:result.reason instanceof Error?result.reason.message:"Source unavailable"})});
+  const terms=["fraud","eCourts","money laundering","financial crime"];
+  const webSearches=terms.map(term=>{const phrase=`\"${query}\" \"${term}\"`;return{term,label:term==="eCourts"?"eCourts":term.replace(/\b\w/g,c=>c.toUpperCase()),query:phrase,href:`https://www.google.com/search?igu=1&hl=en&q=${encodeURIComponent(phrase)}`}});
+  const checkedAt=new Date().toISOString();
+  sources.push({key:"WEB",name:"Google web checks",status:"review",count:webSearches.length,checkedAt,message:"Four structured Google searches prepared for human review"});
+  const riskState=sources.some(source=>source.status==="unavailable")?"incomplete":"review";
+  const {data:record,error:recordError}=await supabase.rpc("record_screening",{
+    p_organisation_id:membership.organisation_id,
+    p_subject_name:query,
+    p_subject_type:subjectType,
+    p_risk_state:riskState,
+    p_results:all,
+    p_sources:sources,
+    p_web_searches:webSearches,
+    p_checked_at:checkedAt,
+  }).single();
+  if(recordError){
+    const noCredits=recordError.message.toLowerCase().includes("no screening credits");
+    return NextResponse.json({error:noCredits?"You have no screening credits remaining. Choose a plan in your dashboard.":"The screening completed, but its audit record could not be saved. No result was returned."},{status:noCredits?402:500});
+  }
+  return NextResponse.json({query,matches:all,sources,webSearches,complete:true,checkedAt,screeningId:record.screening_id,caseReference:record.case_reference},{headers:{"Cache-Control":"no-store"}});
+}
