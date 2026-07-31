@@ -13,14 +13,15 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ClearCheck — AML & Sanctions Screening",
-  description: "Screen people and companies against official EU, UN and Malta records.",
+  metadataBase: new URL("https://clearcheck-malta.nicgauci.chatgpt.site"),
+  title: "ClearCheck — AML Screening, Made Clear",
+  description: "Screen people and businesses across EU and UN sanctions, Maltese court orders and focused web intelligence.",
   openGraph: {
-    title: "ClearCheck — AML & Sanctions Screening",
-    description: "Screen with clarity. Decide with confidence.",
-    images: [{ url: "/og.png", width: 1200, height: 630, alt: "ClearCheck screening workspace" }],
+    title: "ClearCheck — AML Screening, Made Clear",
+    description: "One search across official sanctions, Maltese court orders and focused web intelligence.",
+    images: [{ url: "/og-platform.png", width: 1200, height: 630, alt: "ClearCheck AML screening platform" }],
   },
-  twitter: { card: "summary_large_image", images: ["/og.png"] },
+  twitter: { card: "summary_large_image", images: ["/og-platform.png"] },
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",
