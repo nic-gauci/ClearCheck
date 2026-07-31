@@ -53,6 +53,7 @@ aside { border-right:1px solid var(--line); padding:32px 21px; background:#fbfbf
 .results { padding:43px 48px 55px; min-width:0; }
 .resultHead { display:flex; justify-content:space-between; align-items:flex-end; }
 .resultHead h2 { font:500 34px/1.1 Georgia,serif; margin:8px 0 0; letter-spacing:-.8px; }
+.caseRef { display:block; margin-top:7px; color:#7d8c88; font-size:9px; letter-spacing:.2px; }
 .export { background:white; border:1px solid #cfd9d4; padding:10px 15px; border-radius:3px; font-size:11px; font-weight:700; color:#3f5954; cursor:pointer; }
 .decision { display:flex; align-items:center; gap:14px; margin:26px 0 20px; padding:16px 18px; border:1px solid #b8d9ca; background:#edf8f2; border-radius:4px; }
 .decision.review { border-color:#e9c0aa; background:#fff4ed; }

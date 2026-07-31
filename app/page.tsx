@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import { jsPDF } from "jspdf";
 
 type Result = { source:string; sourceClass:string; name:string; type:string; confidence:number; detail:string; meta:string[]; href:string };
 type SourceStatus = { key:string; name:string; status:"complete"|"unavailable"|"review"; count:number; checkedAt:string; message?:string };
@@ -16,6 +17,8 @@ export default function Home(){
   const [loading,setLoading]=useState(false);
   const [searched,setSearched]=useState(false);
   const [error,setError]=useState("");
+  const [caseRef,setCaseRef]=useState("");
+  const [checkedAt,setCheckedAt]=useState("");
 
   async function screen(e:FormEvent){
     e.preventDefault();
@@ -26,7 +29,10 @@ export default function Home(){
       const response=await fetch(`/api/screen?q=${encodeURIComponent(clean)}`);
       const data=await response.json();
       if(!response.ok)throw new Error(data.error||"Screening could not be completed.");
-      setScreened(clean);setResults(data.matches||[]);setSources(data.sources||[]);setWebSearches(data.webSearches||[]);setActiveWeb(0);setSearched(true);
+      const stamp=data.checkedAt||new Date().toISOString();
+      const dateCode=stamp.slice(0,10).replaceAll("-","");
+      const randomCode=crypto.getRandomValues(new Uint32Array(1))[0].toString(36).slice(0,6).toUpperCase().padStart(6,"0");
+      setScreened(clean);setResults(data.matches||[]);setSources(data.sources||[]);setWebSearches(data.webSearches||[]);setActiveWeb(0);setCheckedAt(stamp);setCaseRef(`CC-${dateCode}-${randomCode}`);setSearched(true);
       window.scrollTo({top:0,behavior:"smooth"});
     }catch(err){setError(err instanceof Error?err.message:"Screening could not be completed.")}
     finally{setLoading(false)}
@@ -38,6 +44,34 @@ export default function Home(){
   const incomplete=sources.some(s=>s.status==="unavailable");
   const webReview=sources.some(s=>s.status==="review");
   const completed=sources.filter(s=>s.status==="complete").length;
+
+  function exportReport(){
+    const pdf=new jsPDF({unit:"mm",format:"a4"});
+    const pageW=210,pageH=297,margin=18,contentW=pageW-margin*2;
+    const ink:[number,number,number]=[20,45,44],green:[number,number,number]=[20,103,79],orange:[number,number,number]=[190,88,43],muted:[number,number,number]=[94,113,108];
+    let y=18,page=1;
+    const footer=()=>{pdf.setDrawColor(218,226,222);pdf.line(margin,pageH-15,pageW-margin,pageH-15);pdf.setFont("helvetica","normal");pdf.setFontSize(7);pdf.setTextColor(...muted);pdf.text("ClearCheck - Independent AML screening report",margin,pageH-9);pdf.text(`Page ${page}`,pageW-margin,pageH-9,{align:"right"})};
+    const newPage=()=>{footer();pdf.addPage();page++;y=18};
+    const ensure=(height:number)=>{if(y+height>pageH-22)newPage()};
+    const label=(text:string)=>{pdf.setFont("helvetica","bold");pdf.setFontSize(7);pdf.setTextColor(...green);pdf.text(text.toUpperCase(),margin,y);y+=5};
+    const heading=(text:string,size=16)=>{ensure(size/2+8);pdf.setFont("helvetica","bold");pdf.setFontSize(size);pdf.setTextColor(...ink);pdf.text(text,margin,y);y+=size*.48+4};
+    const paragraph=(text:string,size=9,color=muted)=>{pdf.setFont("helvetica","normal");pdf.setFontSize(size);pdf.setTextColor(...color);const lines=pdf.splitTextToSize(text,contentW);ensure(lines.length*4.3);pdf.text(lines,margin,y);y+=lines.length*4.3+3};
+    pdf.setFillColor(...ink);pdf.rect(0,0,pageW,48,"F");pdf.setTextColor(255,255,255);pdf.setFont("helvetica","bold");pdf.setFontSize(22);pdf.text("ClearCheck",margin,20);pdf.setFont("helvetica","normal");pdf.setFontSize(9);pdf.setTextColor(179,207,197);pdf.text("AML & SANCTIONS SCREENING REPORT",margin,29);pdf.setFontSize(8);pdf.text(caseRef,pageW-margin,20,{align:"right"});pdf.text(new Date(checkedAt).toLocaleString("en-GB",{dateStyle:"medium",timeStyle:"short"}),pageW-margin,27,{align:"right"});y=61;
+    label("Screened subject");heading(screened,21);paragraph(`Case reference: ${caseRef}   |   Search type: Name-only screening   |   Generated: ${new Date().toLocaleString("en-GB")}`,8);
+    const reportStatus=incomplete?"INCOMPLETE - SOURCE UNAVAILABLE":results.length?"POTENTIAL MATCHES - REVIEW REQUIRED":"NO LIST MATCHES - WEB REVIEW REQUIRED";
+    ensure(24);pdf.setFillColor(...(incomplete||results.length?orange:green));pdf.roundedRect(margin,y,contentW,19,2,2,"F");pdf.setTextColor(255,255,255);pdf.setFont("helvetica","bold");pdf.setFontSize(11);pdf.text(reportStatus,margin+6,y+8);pdf.setFont("helvetica","normal");pdf.setFontSize(7.5);pdf.text(`${completed}/3 live lists completed | ${results.length} potential list match${results.length===1?"":"es"}`,margin+6,y+14);y+=28;
+    label("Source checks");heading("Screening coverage",15);
+    sources.forEach(source=>{ensure(15);pdf.setDrawColor(220,227,223);pdf.setFillColor(249,249,246);pdf.roundedRect(margin,y,contentW,13,1,1,"FD");pdf.setFont("helvetica","bold");pdf.setFontSize(9);pdf.setTextColor(...ink);pdf.text(`${source.key}  ${source.name}`,margin+4,y+5.5);pdf.setFont("helvetica","normal");pdf.setFontSize(7.5);pdf.setTextColor(...muted);const detail=source.status==="complete"?`${source.count} match${source.count===1?"":"es"} - completed ${new Date(source.checkedAt).toLocaleString("en-GB")}`:source.message||source.status;pdf.text(detail,margin+4,y+10);pdf.setFont("helvetica","bold");pdf.setTextColor(...(source.status==="complete"?green:orange));pdf.text(source.status.toUpperCase(),pageW-margin-4,y+7.5,{align:"right"});y+=16});y+=4;
+    label("Official-list findings");heading(results.length?`${results.length} potential match${results.length===1?"":"es"}`:"No potential matches",15);
+    if(!results.length)paragraph("No matching names were identified in the EU consolidated sanctions file, UN Security Council Consolidated List or Malta Asset Recovery Bureau court-order results at the time of this search.");
+    results.forEach((result,index)=>{ensure(32);pdf.setDrawColor(227,216,205);pdf.setFillColor(255,250,246);pdf.roundedRect(margin,y,contentW,27,1,1,"FD");pdf.setFont("helvetica","bold");pdf.setFontSize(10);pdf.setTextColor(...ink);pdf.text(`${index+1}. ${result.name}`,margin+4,y+6);pdf.setTextColor(...orange);pdf.text(`${result.confidence}% name match`,pageW-margin-4,y+6,{align:"right"});pdf.setFont("helvetica","normal");pdf.setFontSize(7.5);pdf.setTextColor(...muted);pdf.text(`${result.source} | ${result.type}${result.meta.length?` | ${result.meta.join(" | ")}`:""}`,margin+4,y+12);const detail=pdf.splitTextToSize(result.detail,contentW-8).slice(0,2);pdf.text(detail,margin+4,y+17);pdf.setTextColor(32,91,127);pdf.textWithLink("Open official evidence",margin+4,y+24,{url:result.href});y+=31});y+=4;
+    ensure(85);label("Web intelligence");heading("Focused review searches",15);paragraph("The following searches were prepared for adverse-media review. Google results are dynamic and were not copied into this PDF. Review relevant pages in ClearCheck and retain supporting evidence separately.");
+    webSearches.forEach((search,index)=>{ensure(11);pdf.setFont("helvetica","bold");pdf.setFontSize(8.5);pdf.setTextColor(...ink);pdf.text(`${index+1}. ${search.label}`,margin,y);pdf.setFont("helvetica","normal");pdf.setTextColor(...muted);pdf.text(search.query,margin+38,y);y+=7});y+=5;
+    label("Important notice");paragraph("This report records an automated name-only screening and is not a legal determination or proof of wrongdoing. Similar names may refer to different people. Verify potential matches using date of birth, nationality, identification numbers, addresses and the linked official evidence. A result can change when source data is updated.",8.5,ink);
+    footer();
+    pdf.setProperties({title:`ClearCheck report - ${screened}`,subject:"AML and sanctions name-screening report",author:"ClearCheck",keywords:"AML, sanctions, screening"});
+    pdf.save(`ClearCheck-${caseRef}.pdf`);
+  }
 
   if(!searched){
     return <main className="homePage">
@@ -78,7 +112,7 @@ export default function Home(){
     </section>
     <section className="workspace reportWorkspace">
       <div className="results">
-        <div className="resultHead"><div><span className="overline">SCREENING RESULT</span><h2>{screened}</h2></div><div className="resultActions"><button className="backHome" onClick={goHome}>← Home</button><button className="export" onClick={()=>window.print()}>↓ &nbsp;Export report</button></div></div>
+        <div className="resultHead"><div><span className="overline">SCREENING RESULT</span><h2>{screened}</h2><small className="caseRef">{caseRef} · {new Date(checkedAt).toLocaleString("en-GB",{dateStyle:"medium",timeStyle:"short"})}</small></div><div className="resultActions"><button className="backHome" onClick={goHome}>← Home</button><button className="export" onClick={exportReport}>↓ &nbsp;Download PDF</button></div></div>
         <div className={`decision ${results.length||incomplete||webReview?"review":"clear"}`}><div className="decisionIcon">{results.length||incomplete||webReview?"!":"✓"}</div><div><strong>{incomplete?"Screening incomplete":results.length?"Potential match found":"Web review required"}</strong><p>{incomplete?"At least one source could not be checked. Do not treat this result as clear.":results.length?"Review the official matches and web searches below.":"No list matches found. Review the web-intelligence searches below before closing the case."}</p></div><span className="decisionTag">{incomplete?"INCOMPLETE":results.length?`${results.length} MATCHES`:"WEB REVIEW"}</span></div>
         <div className="summaryGrid"><div className="identity"><span className="initials">{initials}</span><div><small>SCREENED NAME</small><strong>{screened}</strong><span>Person or entity</span></div></div><div className="stat"><small>LIVE LISTS CHECKED</small><strong>{completed} <span>/ 3</span></strong><i>{completed===3?"Complete":"Not complete"}</i></div><div className="stat"><small>LIST MATCHES</small><strong>{results.length}</strong><i>{results.length?"Needs review":"None found"}</i></div></div>
         <div className="sourceReport">{sources.map(s=><div className={s.status} key={s.key}><span className={`sourceBadge ${s.key.toLowerCase()}`}>{s.key}</span><div><strong>{s.name}</strong><small>{s.status==="complete"?`${s.count} match${s.count===1?"":"es"} · checked ${new Date(s.checkedAt).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}`:s.message||"Could not be checked"}</small></div><b>{s.status==="complete"?"✓":s.status==="review"?"↗":"!"}</b></div>)}</div>
