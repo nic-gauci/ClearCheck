@@ -58,7 +58,7 @@ export default function Home() {
     <main>
       <header className="topbar">
         <a className="brand" href="#top" aria-label="ClearCheck home"><span className="brandMark">C</span><span>ClearCheck</span></a>
-        <div className="headerRight"><span className="sourceCount"><i /> 3 official sources active</span><button className="avatar" aria-label="Account">NG</button></div>
+        <div className="headerRight"><span className="sourceCount"><i /> 3 official sources mapped</span><button className="avatar" aria-label="Account">NG</button></div>
       </header>
 
       <section className="hero" id="top">
@@ -83,7 +83,7 @@ export default function Home() {
               <span className="tick">✓</span>
             </a>
           ))}
-          <div className="updated"><span>↻</span><div><strong>Sources checked live</strong><small>Records should be independently verified</small></div></div>
+          <div className="updated"><span>↻</span><div><strong>Prototype connectors</strong><small>Live ingestion is the next build phase</small></div></div>
         </aside>
 
         <div className="results">
@@ -94,13 +94,13 @@ export default function Home() {
 
           <div className={`decision ${results.length ? "review" : "clear"}`}>
             <div className="decisionIcon">{results.length ? "!" : "✓"}</div>
-            <div><strong>{results.length ? "Potential match found" : "No matches found"}</strong><p>{results.length ? "Review the evidence below before making a decision." : "No matching records were found across the selected official sources."}</p></div>
+            <div><strong>{results.length ? "Potential demo match found" : "No demo matches found"}</strong><p>{results.length ? "Review the linked official evidence before making a decision." : "No matching record exists in this prototype’s small demonstration dataset."}</p></div>
             <span className="decisionTag">{results.length ? `${results.length} REVIEW` : "CLEAR"}</span>
           </div>
 
           <div className="summaryGrid">
             <div className="identity"><span className="initials">{initials}</span><div><small>SCREENED NAME</small><strong>{screened}</strong><span>Person or entity</span></div></div>
-            <div className="stat"><small>SOURCES CHECKED</small><strong>3 <span>/ 3</span></strong><i>Complete</i></div>
+            <div className="stat"><small>SOURCES MAPPED</small><strong>3 <span>/ 3</span></strong><i>Prototype</i></div>
             <div className="stat"><small>POTENTIAL MATCHES</small><strong>{results.length}</strong><i>{results.length ? "Needs review" : "None found"}</i></div>
           </div>
 
