@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { jsPDF } from "jspdf";
+import Link from "next/link";
 
 type Result = { source:string; sourceClass:string; name:string; type:string; confidence:number; detail:string; meta:string[]; href:string };
 type SourceStatus = { key:string; name:string; status:"complete"|"unavailable"|"review"; count:number; checkedAt:string; message?:string };
@@ -143,5 +144,5 @@ export default function Home(){
   </main>
 }
 
-function Header({onHome,showNav=false}:{onHome:()=>void;showNav?:boolean}){return <header className="topbar"><button className="brand brandButton" onClick={onHome} aria-label="ClearCheck home"><span className="brandMark">C</span><span>ClearCheck</span></button>{showNav&&<nav aria-label="Main navigation"><a href="#platform">Platform</a><a href="#coverage">Coverage</a><a href="#industries">Industries</a><a href="#pricing">Pricing</a></nav>}<div className="headerRight"><span className="sourceCount"><i/> Sources online</span><span className="privateLabel">PRIVATE BETA</span>{showNav&&<a className="headerCta" href="#screen">Run a check</a>}</div></header>}
+function Header({onHome,showNav=false}:{onHome:()=>void;showNav?:boolean}){return <header className="topbar"><button className="brand brandButton" onClick={onHome} aria-label="ClearCheck home"><span className="brandMark">C</span><span>ClearCheck</span></button>{showNav&&<nav aria-label="Main navigation"><a href="#platform">Platform</a><a href="#coverage">Coverage</a><a href="#industries">Industries</a><a href="#pricing">Pricing</a></nav>}<div className="headerRight">{!showNav&&<><span className="sourceCount"><i/> Sources online</span><span className="privateLabel">PRIVATE BETA</span></>}{showNav&&<><Link className="headerLogin" href="/login">Log in</Link><Link className="headerCta" href="/register">Register</Link></>}</div></header>}
 function Footer(){return <footer className="siteFooter"><div className="footerBrand"><span className="brandMark">C</span><div><strong>ClearCheck</strong><p>AML screening, made clear.</p></div></div><div className="footerLinks"><div><strong>Platform</strong><a href="#platform">Screening</a><a href="#coverage">Coverage</a><a href="#pricing">Pricing</a></div><div><strong>Use cases</strong><a href="#industries">Financial services</a><a href="#industries">Legal teams</a><a href="#industries">Real estate</a></div><div><strong>Important</strong><span>Private beta</span><span>Human review required</span><span>Not a legal determination</span></div></div><div className="footerBottom"><span>© 2026 ClearCheck</span><span>Independent screening workspace · Source data belongs to its respective publishers</span></div></footer>}
