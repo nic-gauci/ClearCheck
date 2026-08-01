@@ -37,3 +37,14 @@ test("screening API verifies a user and persists an audit record",async()=>{
   assert.match(source,/record_screening/);
   assert.match(source,/no screening credits/i);
 });
+
+test("EU screenings use the validated daily stored snapshot",async()=>{
+  const screening=await readFile(new URL("../app/api/screen/route.ts",import.meta.url),"utf8");
+  const sync=await readFile(new URL("../supabase/functions/sync-eu-sanctions/index.ts",import.meta.url),"utf8");
+  assert.match(screening,/source_snapshots/);
+  assert.match(screening,/EU_SNAPSHOT_PATH/);
+  assert.doesNotMatch(screening,/csvFullSanctionsList/);
+  assert.match(sync,/csvFullSanctionsList/);
+  assert.match(sync,/REQUIRED_HEADERS/);
+  assert.match(sync,/upsert:\s*true/);
+});
