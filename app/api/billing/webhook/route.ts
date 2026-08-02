@@ -44,7 +44,7 @@ async function normalize(event:StripeEvent):Promise<BillingData>{
     currentPeriodEnd=subscription.current_period_end?new Date(subscription.current_period_end*1000).toISOString():undefined;
   }
 
-  const oneTimePaid=(event.type==="checkout.session.completed"&&object.payment_status==="paid")||event.type==="checkout.session.async_payment_succeeded";
+  const oneTimePaid=((event.type==="checkout.session.completed"&&object.payment_status==="paid")||event.type==="checkout.session.async_payment_succeeded")&&!object.subscription;
   const recurringPaid=event.type==="invoice.paid"&&Boolean(subscriptionId);
   return {
     organisationId:metadata.organisation_id,
@@ -58,6 +58,12 @@ async function normalize(event:StripeEvent):Promise<BillingData>{
   };
 }
 
+function processingReference(event:StripeEvent,data:BillingData){
+  if(event.type.startsWith("invoice."))return `invoice:${event.data.object.id}`;
+  if(data.grantCredits&&event.type.startsWith("checkout.session."))return `checkout:${event.data.object.id}`;
+  return `event:${event.id}`;
+}
+
 export async function POST(request:NextRequest){
   const secret=process.env.STRIPE_WEBHOOK_SECRET,signature=request.headers.get("stripe-signature")||"",raw=await request.text();
   if(!secret||!await verifyStripeSignature(raw,signature,secret))return NextResponse.json({error:"Invalid webhook signature."},{status:400});
@@ -68,7 +74,7 @@ export async function POST(request:NextRequest){
     if(data.grantCredits&&(!data.organisationId||!data.planId||!data.priceId))throw new Error("Paid Stripe event is missing fulfilment metadata.");
 
     const {data:processed,error}=await getSupabaseAdmin().rpc("process_stripe_event",{
-      p_event_id:event.id,
+      p_event_id:processingReference(event,data),
       p_event_type:event.type,
       p_organisation_id:data.organisationId||null,
       p_plan_id:data.planId||null,

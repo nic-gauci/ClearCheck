@@ -30,6 +30,10 @@ export default function Home(){
   const [user,setUser]=useState<User|null>(null);
   const [authReady,setAuthReady]=useState(false);
 
+  function openSaved(record:SavedScreening){
+    setScreeningId(record.id);setScreened(record.subject_name);setQuery(record.subject_name);setScreenedType(record.subject_type);setResults(record.results||[]);setSources(record.sources||[]);setWebSearches(record.web_searches||[]);setActiveWeb(0);setWebExpanded(false);setCheckedAt(record.checked_at);setCaseRef(record.case_reference);setSearched(true);
+  }
+
   useEffect(()=>{
     const supabase=getSupabaseBrowserClient();
     let active=true;
@@ -49,10 +53,6 @@ export default function Home(){
     const {data:{subscription}}=supabase.auth.onAuthStateChange((_event,session)=>{setUser(session?.user||null);setAuthReady(true)});
     return()=>{active=false;subscription.unsubscribe()};
   },[]);
-
-  function openSaved(record:SavedScreening){
-    setScreeningId(record.id);setScreened(record.subject_name);setQuery(record.subject_name);setScreenedType(record.subject_type);setResults(record.results||[]);setSources(record.sources||[]);setWebSearches(record.web_searches||[]);setActiveWeb(0);setWebExpanded(false);setCheckedAt(record.checked_at);setCaseRef(record.case_reference);setSearched(true);
-  }
 
   async function screen(e:FormEvent){
     e.preventDefault();

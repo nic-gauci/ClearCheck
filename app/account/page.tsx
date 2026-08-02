@@ -11,6 +11,8 @@ type Profile={first_name:string;last_name:string;display_name:string;company:str
 type Organisation={id:string;name:string;billing_email:string|null};
 type Plan={id:string;name:string;billing_mode:string;price_cents:number;credits:number|null;interval_name:string|null;description:string};
 type Compliance={retention_months:number;automatic_deletion:boolean;legal_hold:boolean};
+type LedgerEntry={amount:number;entry_type:string;external_reference:string|null;created_at:string};
+type ConfirmedPurchase={planName:string;credits:number;amount:number;currency:string};
 
 export default function AccountPage(){
   const [user,setUser]=useState<User|null>(null);
@@ -21,6 +23,8 @@ export default function AccountPage(){
   const [plans,setPlans]=useState<Plan[]>([]);
   const [compliance,setCompliance]=useState<Compliance|null>(null);
   const [credits,setCredits]=useState(0);
+  const [purchases,setPurchases]=useState<LedgerEntry[]>([]);
+  const [confirmedPurchase,setConfirmedPurchase]=useState<ConfirmedPurchase|null>(null);
   const [reportCount,setReportCount]=useState(0);
   const [loading,setLoading]=useState(true);
   const [notice,setNotice]=useState("");
@@ -31,9 +35,21 @@ export default function AccountPage(){
 
   async function loadWorkspace(){
     const supabase=getSupabaseBrowserClient();
-    const {data:{user:current}}=await supabase.auth.getUser();
-    if(!current){window.location.replace("/login?returnTo=/account");return}
+    const {data:{session}}=await supabase.auth.getSession();
+    const current=session?.user;
+    if(!current){window.location.replace(`/login?returnTo=${encodeURIComponent(window.location.pathname+window.location.search)}`);return}
     setUser(current);
+    const billingParams=new URLSearchParams(window.location.search);
+    if(billingParams.get("billing")==="success"&&billingParams.get("session_id")){
+      const response=await fetch("/api/billing/confirm",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${session.access_token}`},body:JSON.stringify({sessionId:billingParams.get("session_id")})});
+      const payload=await response.json();
+      if(response.ok)setConfirmedPurchase(payload.purchase as ConfirmedPurchase);
+      else setError(payload.error||"Your payment was received, but the credits could not be confirmed yet.");
+      window.history.replaceState({},"","/account");
+    }else if(billingParams.get("billing")==="cancelled"){
+      setNotice("Checkout was cancelled. No payment was taken.");
+      window.history.replaceState({},"","/account");
+    }
     const [{data:profileRow},{data:membership},{data:planRows}]=await Promise.all([
       supabase.from("profiles").select("first_name,last_name,display_name,company,phone").eq("id",current.id).maybeSingle(),
       supabase.from("organisation_members").select("organisation_id,role").eq("user_id",current.id).eq("status","active").limit(1).maybeSingle(),
@@ -46,11 +62,12 @@ export default function AccountPage(){
       const [{data:org},{data:history},{data:ledger},{count:reports},{data:settings}]=await Promise.all([
         supabase.from("organisations").select("id,name,billing_email").eq("id",orgId).single(),
         supabase.from("screenings").select("*").eq("organisation_id",orgId).order("created_at",{ascending:false}).limit(100),
-        supabase.from("credit_ledger").select("amount").eq("organisation_id",orgId),
+        supabase.from("credit_ledger").select("amount,entry_type,external_reference,created_at").eq("organisation_id",orgId).order("created_at",{ascending:false}),
         supabase.from("reports").select("id",{count:"exact",head:true}).eq("organisation_id",orgId),
         supabase.from("compliance_settings").select("retention_months,automatic_deletion,legal_hold").eq("organisation_id",orgId).maybeSingle(),
       ]);
-      setOrganisation(org as Organisation);setScreenings((history||[]) as SavedScreening[]);setCredits((ledger||[]).reduce((sum,row)=>sum+Number(row.amount),0));setReportCount(reports||0);setCompliance(settings as Compliance|null);
+      const entries=(ledger||[]) as LedgerEntry[];
+      setOrganisation(org as Organisation);setScreenings((history||[]) as SavedScreening[]);setCredits(entries.reduce((sum,row)=>sum+Number(row.amount),0));setPurchases(entries.filter(row=>["purchase","bundle","subscription"].includes(row.entry_type)));setReportCount(reports||0);setCompliance(settings as Compliance|null);
     }
     setLoading(false);
   }
@@ -109,11 +126,13 @@ export default function AccountPage(){
   if(loading||!user)return <main className="accountPage"><div className="accountLoading"><span className="brandMark">C</span><p>Opening your ClearCheck workspace…</p></div></main>;
   const name=profile?.display_name||user.user_metadata?.full_name||user.email?.split("@")[0]||"ClearCheck user";
   const canManageBilling=role==="owner"||role==="admin";
+  const purchasePlan=(purchase:LedgerEntry)=>plans.find(plan=>plan.credits===purchase.amount&&((purchase.entry_type==="subscription"&&plan.billing_mode==="monthly")||(purchase.entry_type==="bundle"&&plan.billing_mode==="bundle")||(purchase.entry_type==="purchase"&&plan.billing_mode==="single")));
 
   return <main className="dashboardPage">
-    <header className="accountHeader"><Link className="brand" href="/"><span className="brandMark">C</span><span>ClearCheck</span></Link><div><Link href="/">New screening</Link><button onClick={signOut}>Log out</button></div></header>
+    <header className="accountHeader"><Link className="brand" href="/"><span className="brandMark">C</span><span>ClearCheck</span></Link><nav className="accountShortcuts" aria-label="Main navigation"><Link href="/#platform">Platform</Link><Link href="/#coverage">Coverage</Link><Link href="/#industries">Industries</Link><Link href="/#pricing">Pricing</Link></nav><div><Link href="/">New screening</Link><button onClick={signOut}>Log out</button></div></header>
     <section className="dashboardHero"><div><span className="authEyebrow"><i/> SECURE WORKSPACE</span><h1>Good to see you, {String(name).split(" ")[0]}.</h1><p>{organisation?.name||"Your organisation"} · {role||"member"}</p></div><Link href="/">Run a new screening <span>→</span></Link></section>
     <section className="dashboardShell">
+      {confirmedPurchase&&<section className="checkoutAccountSuccess"><span className="successIcon">✓</span><div><small>PAYMENT RECEIVED</small><h2>Purchase successful</h2><p><b>+{confirmedPurchase.credits} screening {confirmedPurchase.credits===1?"credit":"credits"}</b> added from {confirmedPurchase.planName} · {confirmedPurchase.currency} {(confirmedPurchase.amount/100).toFixed(2)}</p></div><Link href="/">Start a screening <span>→</span></Link></section>}
       {(notice||error)&&<div className={`dashboardNotice ${error?"error":""}`}>{error||notice}</div>}
       <div className="dashboardStats"><article><small>AVAILABLE CREDITS</small><strong>{credits}</strong><span>1 credit per screening</span></article><article><small>SAVED SCREENINGS</small><strong>{screenings.length}</strong><span>Organisation history</span></article><article><small>PDF REPORTS</small><strong>{reportCount}</strong><span>Audit events recorded</span></article><article><small>WORKSPACE ROLE</small><strong className="wordStat">{role||"Member"}</strong><span>Row-level access enforced</span></article></div>
 
@@ -127,6 +146,10 @@ export default function AccountPage(){
       </div>
 
       <section className="dashboardPanel billingPanel"><div className="panelHeading"><div><span>CREDITS & BILLING</span><h2>Choose how you screen</h2><p>Secure checkout and invoices are handled by Stripe.</p></div>{canManageBilling?<button className="portalButton" disabled={busy==="portal"} onClick={openBillingPortal}>Manage billing</button>:null}</div><div className="planGrid">{plans.filter(plan=>plan.billing_mode!=="beta").map(plan=><article key={plan.id}><span>{plan.billing_mode.toUpperCase()}</span><h3>{plan.name}</h3><strong>€{(plan.price_cents/100).toFixed(0)}{plan.interval_name==="month"?<small>/month</small>:null}</strong><p>{plan.description}</p><button disabled={Boolean(busy)||!canManageBilling} onClick={()=>startCheckout(plan.id)}>{canManageBilling?(busy===plan.id?"Opening checkout…":"Choose plan"):"Admin access required"}</button></article>)}</div><p className="billingFootnote">Live charges stay disabled until Stripe test or live credentials and product price IDs are connected.</p></section>
+
+      <section className="dashboardPanel purchasePanel"><div className="panelHeading"><div><span>PURCHASE HISTORY</span><h2>Payments &amp; credits</h2><p>Completed Stripe purchases for this organisation.</p></div></div>
+        {purchases.length?<div className="purchaseTable"><div className="purchaseRow purchaseLabels"><span>Plan</span><span>Date</span><span>Credits</span><span>Amount</span><span>Status</span></div>{purchases.map(purchase=>{const plan=purchasePlan(purchase);return <div className="purchaseRow" key={purchase.external_reference||purchase.created_at}><span><b>{plan?.name||"Credit purchase"}</b><small>Stripe checkout</small></span><span>{new Date(purchase.created_at).toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"})}</span><span>+{purchase.amount}</span><span>{plan?`€${(plan.price_cents/100).toFixed(0)}`:"—"}</span><span><i className="statusDot"/>Paid</span></div>})}</div>:<div className="emptyPurchases"><h3>No purchases yet</h3><p>Your completed Stripe payments will appear here automatically.</p></div>}
+      </section>
     </section>
     <footer className="dashboardFooter"><span>© 2026 ClearCheck</span><div><Link href="/privacy">Privacy</Link><Link href="/terms">Terms</Link><Link href="/security">Security</Link></div></footer>
   </main>;

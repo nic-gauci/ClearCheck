@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getBearerToken, getSupabaseAdmin, getSupabaseForToken } from "../../../lib/supabase-server";
-import { getAppUrl, stripePrices, stripeRequest } from "../../../lib/stripe";
+import { getAppUrl, stripePrices, stripeRead, stripeRequest } from "../../../lib/stripe";
 
 export const dynamic="force-dynamic";
 
@@ -17,13 +17,22 @@ export async function POST(request:NextRequest){
     if(!plan)return NextResponse.json({error:"That plan is not available."},{status:400});
     const {data:billing}=await admin.from("billing_customers").select("stripe_customer_id").eq("organisation_id",membership.organisation_id).maybeSingle();
     let customerId=billing?.stripe_customer_id as string|undefined;
+    if(customerId){
+      try{
+        const customer=await stripeRead(`customers/${encodeURIComponent(customerId)}`);
+        if(customer.deleted)customerId=undefined;
+      }catch(error){
+        if(error instanceof Error&&error.message.includes("No such customer"))customerId=undefined;
+        else throw error;
+      }
+    }
     if(!customerId){
       const customer=await stripeRequest("customers",new URLSearchParams({email:user.email||"","metadata[organisation_id]":membership.organisation_id}),`clearcheck-customer-${membership.organisation_id}`);
       customerId=String(customer.id);
       await admin.from("billing_customers").upsert({organisation_id:membership.organisation_id,stripe_customer_id:customerId});
     }
     const origin=getAppUrl(),mode=plan.billing_mode==="monthly"?"subscription":"payment";
-    const params=new URLSearchParams({customer:customerId,mode,"line_items[0][price]":priceId,"line_items[0][quantity]":"1","automatic_tax[enabled]":"true","tax_id_collection[enabled]":"true",billing_address_collection:"required","customer_update[address]":"auto","customer_update[name]":"auto",success_url:`${origin}/account?billing=success`,cancel_url:`${origin}/account?billing=cancelled`,client_reference_id:membership.organisation_id,"metadata[organisation_id]":membership.organisation_id,"metadata[plan_id]":plan.id,"metadata[price_id]":priceId});
+    const params=new URLSearchParams({customer:customerId,mode,"line_items[0][price]":priceId,"line_items[0][quantity]":"1","automatic_tax[enabled]":"true","tax_id_collection[enabled]":"true",billing_address_collection:"required","customer_update[address]":"auto","customer_update[name]":"auto",success_url:`${origin}/account?billing=success&session_id={CHECKOUT_SESSION_ID}`,cancel_url:`${origin}/account?billing=cancelled`,client_reference_id:membership.organisation_id,"metadata[organisation_id]":membership.organisation_id,"metadata[plan_id]":plan.id,"metadata[price_id]":priceId});
     if(mode==="subscription"){
       params.set("subscription_data[metadata][organisation_id]",membership.organisation_id);
       params.set("subscription_data[metadata][plan_id]",plan.id);
