@@ -41,10 +41,14 @@ export default function AccountPage(){
     setUser(current);
     const billingParams=new URLSearchParams(window.location.search);
     if(billingParams.get("billing")==="success"&&billingParams.get("session_id")){
-      const response=await fetch("/api/billing/confirm",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${session.access_token}`},body:JSON.stringify({sessionId:billingParams.get("session_id")})});
-      const payload=await response.json();
-      if(response.ok)setConfirmedPurchase(payload.purchase as ConfirmedPurchase);
-      else setError(payload.error||"Your payment was received, but the credits could not be confirmed yet.");
+      try{
+        const response=await fetch("/api/billing/confirm",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${session.access_token}`},body:JSON.stringify({sessionId:billingParams.get("session_id")})});
+        const payload=await response.json().catch(()=>({error:"Your payment was received, but the confirmation service returned an invalid response."}));
+        if(response.ok)setConfirmedPurchase(payload.purchase as ConfirmedPurchase);
+        else setError(payload.error||"Your payment was received, but the credits could not be confirmed yet.");
+      }catch{
+        setError("Your payment was received, but ClearCheck could not confirm the credits yet. Reload this page to retry safely.");
+      }
       window.history.replaceState({},"","/account");
     }else if(billingParams.get("billing")==="cancelled"){
       setNotice("Checkout was cancelled. No payment was taken.");
@@ -59,13 +63,18 @@ export default function AccountPage(){
     if(membership){
       setRole(membership.role);
       const orgId=membership.organisation_id;
-      const [{data:org},{data:history},{data:ledger},{count:reports},{data:settings}]=await Promise.all([
+      const [{data:org},{data:history},ledgerResult,{count:reports},{data:settings}]=await Promise.all([
         supabase.from("organisations").select("id,name,billing_email").eq("id",orgId).single(),
         supabase.from("screenings").select("*").eq("organisation_id",orgId).order("created_at",{ascending:false}).limit(100),
         supabase.from("credit_ledger").select("amount,entry_type,external_reference,created_at,plan_id,amount_paid_cents,currency,payment_status").eq("organisation_id",orgId).order("created_at",{ascending:false}),
         supabase.from("reports").select("id",{count:"exact",head:true}).eq("organisation_id",orgId),
         supabase.from("compliance_settings").select("retention_months,automatic_deletion,legal_hold").eq("organisation_id",orgId).maybeSingle(),
       ]);
+      let ledger=ledgerResult.data;
+      if(ledgerResult.error&&(ledgerResult.error.code==="42703"||ledgerResult.error.code==="PGRST204")){
+        const legacyLedger=await supabase.from("credit_ledger").select("amount,entry_type,external_reference,created_at").eq("organisation_id",orgId).order("created_at",{ascending:false});
+        ledger=legacyLedger.data?.map(row=>({...row,plan_id:null,amount_paid_cents:null,currency:null,payment_status:null}))||null;
+      }
       const entries=(ledger||[]) as LedgerEntry[];
       setOrganisation(org as Organisation);setScreenings((history||[]) as SavedScreening[]);setCredits(entries.reduce((sum,row)=>sum+Number(row.amount),0));setPurchases(entries.filter(row=>["purchase","bundle","subscription"].includes(row.entry_type)));setReportCount(reports||0);setCompliance(settings as Compliance|null);
     }

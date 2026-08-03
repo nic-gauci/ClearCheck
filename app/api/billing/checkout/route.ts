@@ -32,7 +32,7 @@ export async function POST(request:NextRequest){
       customerId=String(customer.id);
       await admin.from("billing_customers").upsert({organisation_id:membership.organisation_id,stripe_customer_id:customerId});
     }
-    const origin=getAppUrl(),mode=plan.billing_mode==="monthly"?"subscription":"payment";
+    const origin=getAppUrl(request.nextUrl.origin),mode=plan.billing_mode==="monthly"?"subscription":"payment";
     const params=new URLSearchParams({customer:customerId,mode,"line_items[0][price]":priceId,"line_items[0][quantity]":"1","automatic_tax[enabled]":"true","tax_id_collection[enabled]":"true",billing_address_collection:"required","customer_update[address]":"auto","customer_update[name]":"auto",success_url:`${origin}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,cancel_url:`${origin}/account?billing=cancelled`,client_reference_id:membership.organisation_id,"metadata[organisation_id]":membership.organisation_id,"metadata[plan_id]":plan.id,"metadata[price_id]":priceId});
     if(mode==="subscription"){
       params.set("subscription_data[metadata][organisation_id]",membership.organisation_id);

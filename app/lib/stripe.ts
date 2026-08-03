@@ -31,12 +31,21 @@ export async function stripeRead(path:string,params=new URLSearchParams()){
   return payload;
 }
 
-export function getAppUrl(){
-  const value=process.env.APP_URL;
-  if(!value)throw new Error("The canonical app URL is not configured.");
-  const url=new URL(value);
-  if(url.protocol!=="https:"&&url.hostname!=="localhost")throw new Error("The canonical app URL must use HTTPS.");
-  return url.origin;
+function isLocalHost(hostname:string){return hostname==="localhost"||hostname==="127.0.0.1"||hostname==="[::1]"}
+
+export function resolveAppUrl(configuredValue:string|undefined,requestOrigin?:string){
+  if(!configuredValue)throw new Error("The canonical app URL is not configured.");
+  const configured=new URL(configuredValue);
+  if(configured.protocol!=="https:"&&!isLocalHost(configured.hostname))throw new Error("The canonical app URL must use HTTPS.");
+  if(requestOrigin&&isLocalHost(configured.hostname)){
+    const requestUrl=new URL(requestOrigin);
+    if(isLocalHost(requestUrl.hostname)&&(requestUrl.protocol==="http:"||requestUrl.protocol==="https:"))return requestUrl.origin;
+  }
+  return configured.origin;
+}
+
+export function getAppUrl(requestOrigin?:string){
+  return resolveAppUrl(process.env.APP_URL,requestOrigin);
 }
 
 export async function verifyStripeSignature(payload:string,header:string,secret:string){

@@ -4,6 +4,12 @@ export type StripeObject={
   parent?:{subscription_details?:{subscription?:string}};
 };
 export type StripeEvent={id:string;type:string;data:{object:StripeObject}};
+
+export function isMissingStripeV2Function(error:unknown){
+  if(!error||typeof error!=="object")return false;
+  const value=error as {code?:string;message?:string};
+  return value.code==="PGRST202"&&Boolean(value.message?.includes("process_stripe_event_v2"));
+}
 export type BillingData={organisationId?:string;planId?:string;priceId?:string;customerId?:string;subscriptionId?:string;status?:string;currentPeriodEnd?:string;grantCredits:boolean;amountPaidCents?:number;currency?:string};
 
 function subscriptionIdFromInvoice(object:StripeObject){return object.subscription||object.parent?.subscription_details?.subscription}

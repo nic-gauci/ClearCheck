@@ -14,7 +14,7 @@ export async function POST(request:NextRequest){
     if(!membership||!["owner","admin"].includes(membership.role))return NextResponse.json({error:"Only organisation owners and admins can manage billing."},{status:403});
     const {data:billing}=await admin.from("billing_customers").select("stripe_customer_id").eq("organisation_id",membership.organisation_id).maybeSingle();
     if(!billing?.stripe_customer_id)return NextResponse.json({error:"No Stripe billing account exists yet. Complete a checkout first."},{status:404});
-    const session=await stripeRequest("billing_portal/sessions",new URLSearchParams({customer:billing.stripe_customer_id,return_url:`${getAppUrl()}/account`}));
+    const session=await stripeRequest("billing_portal/sessions",new URLSearchParams({customer:billing.stripe_customer_id,return_url:`${getAppUrl(request.nextUrl.origin)}/account`}));
     return NextResponse.json({url:session.url});
   }catch(error){const incidentId=logServerError("billing.portal",error);return NextResponse.json({error:"The billing portal could not be opened. Try again shortly.",incidentId},{status:503})}
 }

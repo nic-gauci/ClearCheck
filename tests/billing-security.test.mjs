@@ -1,22 +1,28 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { normalizeStripeEvent, stripeProcessingReference } from "../app/lib/billing-events.ts";
+import { isMissingStripeV2Function, normalizeStripeEvent, stripeProcessingReference } from "../app/lib/billing-events.ts";
+import { resolveAppUrl } from "../app/lib/stripe.ts";
 
 const read=(path)=>readFile(new URL(path,import.meta.url),"utf8");
 
 test("checkout returns through the success screen and live charging is gated",async()=>{
   const [checkout,stripe,success]=await Promise.all([read("../app/api/billing/checkout/route.ts"),read("../app/lib/stripe.ts"),read("../app/checkout/success/page.tsx")]);
   assert.match(checkout,/\/checkout\/success\?session_id=\{CHECKOUT_SESSION_ID\}/);
+  assert.match(checkout,/getAppUrl\(request\.nextUrl\.origin\)/);
   assert.match(success,/\/account\?billing=success&session_id=/);
   assert.match(stripe,/ALLOW_LIVE_STRIPE/);
   assert.match(stripe,/sk_live_/);
+  assert.equal(resolveAppUrl("http://localhost:3000","http://localhost:3002"),"http://localhost:3002");
+  assert.equal(resolveAppUrl("https://clearcheck.example","https://attacker.example"),"https://clearcheck.example");
 });
 
 test("Stripe credit fulfilment and purchase history use one idempotent provider reference",async()=>{
   const [confirm,webhook,billingEvents,migration,account]=await Promise.all([read("../app/api/billing/confirm/route.ts"),read("../app/api/billing/webhook/route.ts"),read("../app/lib/billing-events.ts"),read("../supabase/migrations/20260803020402_billing_audit_privacy_controls.sql"),read("../app/account/page.tsx")]);
   assert.match(confirm,/process_stripe_event_v2/);
+  assert.match(confirm,/process_stripe_event"/);
   assert.match(webhook,/process_stripe_event_v2/);
+  assert.match(webhook,/process_stripe_event"/);
   assert.match(confirm,/invoice:\$\{subscription\.latest_invoice\}|checkout:\$\{session\.id\}/);
   assert.match(billingEvents,/invoice:\$\{event\.data\.object\.id\}/);
   assert.match(billingEvents,/checkout:\$\{event\.data\.object\.id\}/);
@@ -25,6 +31,8 @@ test("Stripe credit fulfilment and purchase history use one idempotent provider 
   assert.match(migration,/amount_paid_cents/);
   assert.match(account,/PURCHASE HISTORY/);
   assert.match(account,/payment_status/);
+  assert.equal(isMissingStripeV2Function({code:"PGRST202",message:"Could not find process_stripe_event_v2"}),true);
+  assert.equal(isMissingStripeV2Function({code:"23505",message:"duplicate"}),false);
 });
 
 test("successful, failed, repeated, and subscription events produce safe credit decisions",async()=>{
