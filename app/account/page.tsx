@@ -11,7 +11,7 @@ type Profile={first_name:string;last_name:string;display_name:string;company:str
 type Organisation={id:string;name:string;billing_email:string|null};
 type Plan={id:string;name:string;billing_mode:string;price_cents:number;credits:number|null;interval_name:string|null;description:string};
 type Compliance={retention_months:number;automatic_deletion:boolean;legal_hold:boolean};
-type LedgerEntry={amount:number;entry_type:string;external_reference:string|null;created_at:string};
+type LedgerEntry={amount:number;entry_type:string;external_reference:string|null;created_at:string;plan_id:string|null;amount_paid_cents:number|null;currency:string|null;payment_status:string|null};
 type ConfirmedPurchase={planName:string;credits:number;amount:number;currency:string};
 
 export default function AccountPage(){
@@ -62,7 +62,7 @@ export default function AccountPage(){
       const [{data:org},{data:history},{data:ledger},{count:reports},{data:settings}]=await Promise.all([
         supabase.from("organisations").select("id,name,billing_email").eq("id",orgId).single(),
         supabase.from("screenings").select("*").eq("organisation_id",orgId).order("created_at",{ascending:false}).limit(100),
-        supabase.from("credit_ledger").select("amount,entry_type,external_reference,created_at").eq("organisation_id",orgId).order("created_at",{ascending:false}),
+        supabase.from("credit_ledger").select("amount,entry_type,external_reference,created_at,plan_id,amount_paid_cents,currency,payment_status").eq("organisation_id",orgId).order("created_at",{ascending:false}),
         supabase.from("reports").select("id",{count:"exact",head:true}).eq("organisation_id",orgId),
         supabase.from("compliance_settings").select("retention_months,automatic_deletion,legal_hold").eq("organisation_id",orgId).maybeSingle(),
       ]);
@@ -94,17 +94,19 @@ export default function AccountPage(){
     setBusy("");
   }
 
-  async function requestDeletion(){
-    if(!organisation||!user||!window.confirm("Submit a formal account-data deletion request for review? AML records may need to be retained where law requires."))return;
-    setBusy("delete");setError("");setNotice("");
-    const {error:requestError}=await getSupabaseBrowserClient().from("data_deletion_requests").insert({organisation_id:organisation.id,requested_by:user.id,reason:"Requested from ClearCheck account settings"});
-    if(requestError)setError(requestError.message);else setNotice("Your deletion request has been recorded for privacy and legal review.");setBusy("");
+  async function requestPrivacyAction(requestType:"access"|"correction"|"deletion"){
+    const labels={access:"a copy of your account data",correction:"correction of personal data",deletion:"account-data deletion"};
+    if(!organisation||!user||!window.confirm(`Submit a formal request for ${labels[requestType]}? Screening records may need to be retained where law requires.`))return;
+    setBusy(requestType);setError("");setNotice("");
+    const {error:requestError}=await getSupabaseBrowserClient().from("data_deletion_requests").insert({organisation_id:organisation.id,requested_by:user.id,request_type:requestType,reason:"Requested from ClearCheck account settings"});
+    if(requestError)setError(requestError.message);else setNotice(`Your ${requestType} request has been recorded for privacy review.`);setBusy("");
   }
 
   async function download(record:SavedScreening){
     setBusy(record.id);setError("");
-    const {error:reportError}=await getSupabaseBrowserClient().rpc("record_report_download",{p_screening_id:record.id,p_checksum:null});
-    if(reportError)setError("The report audit event could not be recorded.");else{downloadScreeningReport(record);setReportCount(count=>count+1)}
+    const {data:{session}}=await getSupabaseBrowserClient().auth.getSession();
+    const response=await fetch("/api/reports",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${session?.access_token||""}`},body:JSON.stringify({screeningId:record.id})});
+    if(!response.ok)setError("The report audit event could not be recorded.");else{downloadScreeningReport(record);setReportCount(count=>count+1)}
     setBusy("");
   }
 
@@ -126,7 +128,7 @@ export default function AccountPage(){
   if(loading||!user)return <main className="accountPage"><div className="accountLoading"><span className="brandMark">C</span><p>Opening your ClearCheck workspace…</p></div></main>;
   const name=profile?.display_name||user.user_metadata?.full_name||user.email?.split("@")[0]||"ClearCheck user";
   const canManageBilling=role==="owner"||role==="admin";
-  const purchasePlan=(purchase:LedgerEntry)=>plans.find(plan=>plan.credits===purchase.amount&&((purchase.entry_type==="subscription"&&plan.billing_mode==="monthly")||(purchase.entry_type==="bundle"&&plan.billing_mode==="bundle")||(purchase.entry_type==="purchase"&&plan.billing_mode==="single")));
+  const purchasePlan=(purchase:LedgerEntry)=>plans.find(plan=>plan.id===purchase.plan_id)||plans.find(plan=>plan.credits===purchase.amount&&((purchase.entry_type==="subscription"&&plan.billing_mode==="monthly")||(purchase.entry_type==="bundle"&&plan.billing_mode==="bundle")||(purchase.entry_type==="purchase"&&plan.billing_mode==="single")));
 
   return <main className="dashboardPage">
     <header className="accountHeader"><Link className="brand" href="/"><span className="brandMark">C</span><span>ClearCheck</span></Link><nav className="accountShortcuts" aria-label="Main navigation"><Link href="/#platform">Platform</Link><Link href="/#coverage">Coverage</Link><Link href="/#industries">Industries</Link><Link href="/#pricing">Pricing</Link></nav><div><Link href="/">New screening</Link><button onClick={signOut}>Log out</button></div></header>
@@ -142,13 +144,13 @@ export default function AccountPage(){
 
       <div className="dashboardTwoCol">
         <section className="dashboardPanel"><div className="panelHeading"><div><span>ACCOUNT SETTINGS</span><h2>Profile & organisation</h2></div><span className="memberBadge">{role}</span></div><form className="settingsForm" onSubmit={saveAccount}><div><label>First name<input name="first" defaultValue={profile?.first_name||""} required/></label><label>Last name<input name="last" defaultValue={profile?.last_name||""} required/></label></div><label>Organisation name<input name="organisation" defaultValue={organisation?.name||""} required/></label><label>Phone number<input name="phone" defaultValue={profile?.phone||""} placeholder="Optional"/></label><button disabled={busy==="account"}>{busy==="account"?"Saving…":"Save settings"}</button></form></section>
-        <section className="dashboardPanel"><div className="panelHeading"><div><span>DATA CONTROL</span><h2>Retention & deletion</h2></div></div><form className="settingsForm" onSubmit={saveRetention}><label>Retention period<select name="months" defaultValue={compliance?.retention_months||60}><option value="60">5 years</option><option value="72">6 years</option><option value="84">7 years</option><option value="120">10 years</option></select></label><label className="checkSetting"><input type="checkbox" name="automatic" defaultChecked={compliance?.automatic_deletion||false}/><span><b>Enable scheduled deletion</b><small>Only after the retention period, with legal-hold protection.</small></span></label><button disabled={busy==="retention"}>{busy==="retention"?"Saving…":"Save retention"}</button></form><button className="dangerLink" disabled={busy==="delete"} onClick={requestDeletion}>Request account-data deletion</button></section>
+        <section className="dashboardPanel"><div className="panelHeading"><div><span>DATA CONTROL</span><h2>Retention & privacy rights</h2></div></div><form className="settingsForm" onSubmit={saveRetention}><label>Retention period<select name="months" defaultValue={compliance?.retention_months||60}><option value="60">5 years</option><option value="72">6 years</option><option value="84">7 years</option><option value="120">10 years</option></select></label><label className="checkSetting"><input type="checkbox" name="automatic" defaultChecked={compliance?.automatic_deletion||false}/><span><b>Enable scheduled deletion</b><small>Only after the retention period, with legal-hold protection.</small></span></label><button disabled={busy==="retention"}>{busy==="retention"?"Saving…":"Save retention"}</button></form><div className="privacyActions"><button disabled={Boolean(busy)} onClick={()=>requestPrivacyAction("access")}>Request data copy</button><button disabled={Boolean(busy)} onClick={()=>requestPrivacyAction("correction")}>Request correction</button><button className="dangerLink" disabled={Boolean(busy)} onClick={()=>requestPrivacyAction("deletion")}>Request deletion</button></div></section>
       </div>
 
       <section className="dashboardPanel billingPanel"><div className="panelHeading"><div><span>CREDITS & BILLING</span><h2>Choose how you screen</h2><p>Secure checkout and invoices are handled by Stripe.</p></div>{canManageBilling?<button className="portalButton" disabled={busy==="portal"} onClick={openBillingPortal}>Manage billing</button>:null}</div><div className="planGrid">{plans.filter(plan=>plan.billing_mode!=="beta").map(plan=><article key={plan.id}><span>{plan.billing_mode.toUpperCase()}</span><h3>{plan.name}</h3><strong>€{(plan.price_cents/100).toFixed(0)}{plan.interval_name==="month"?<small>/month</small>:null}</strong><p>{plan.description}</p><button disabled={Boolean(busy)||!canManageBilling} onClick={()=>startCheckout(plan.id)}>{canManageBilling?(busy===plan.id?"Opening checkout…":"Choose plan"):"Admin access required"}</button></article>)}</div><p className="billingFootnote">Live charges stay disabled until Stripe test or live credentials and product price IDs are connected.</p></section>
 
       <section className="dashboardPanel purchasePanel"><div className="panelHeading"><div><span>PURCHASE HISTORY</span><h2>Payments &amp; credits</h2><p>Completed Stripe purchases for this organisation.</p></div></div>
-        {purchases.length?<div className="purchaseTable"><div className="purchaseRow purchaseLabels"><span>Plan</span><span>Date</span><span>Credits</span><span>Amount</span><span>Status</span></div>{purchases.map(purchase=>{const plan=purchasePlan(purchase);return <div className="purchaseRow" key={purchase.external_reference||purchase.created_at}><span><b>{plan?.name||"Credit purchase"}</b><small>Stripe checkout</small></span><span>{new Date(purchase.created_at).toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"})}</span><span>+{purchase.amount}</span><span>{plan?`€${(plan.price_cents/100).toFixed(0)}`:"—"}</span><span><i className="statusDot"/>Paid</span></div>})}</div>:<div className="emptyPurchases"><h3>No purchases yet</h3><p>Your completed Stripe payments will appear here automatically.</p></div>}
+        {purchases.length?<div className="purchaseTable"><div className="purchaseRow purchaseLabels"><span>Plan</span><span>Date</span><span>Credits</span><span>Amount</span><span>Status</span></div>{purchases.map(purchase=>{const plan=purchasePlan(purchase),amount=purchase.amount_paid_cents??plan?.price_cents,currency=purchase.currency||"EUR";return <div className="purchaseRow" key={purchase.external_reference||purchase.created_at}><span><b>{plan?.name||"Credit purchase"}</b><small>{purchase.external_reference||"Stripe checkout"}</small></span><span>{new Date(purchase.created_at).toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"})}</span><span>+{purchase.amount}</span><span>{amount===undefined?"—":`${currency} ${(amount/100).toFixed(2)}`}</span><span><i className="statusDot"/>{purchase.payment_status||"Paid"}</span></div>})}</div>:<div className="emptyPurchases"><h3>No purchases yet</h3><p>Your completed Stripe payments will appear here automatically.</p></div>}
       </section>
     </section>
     <footer className="dashboardFooter"><span>© 2026 ClearCheck</span><div><Link href="/privacy">Privacy</Link><Link href="/terms">Terms</Link><Link href="/security">Security</Link></div></footer>

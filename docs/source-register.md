@@ -1,0 +1,18 @@
+# ClearCheck source register
+
+Status: operational draft. Review date: 3 August 2026.
+
+| Source | Owner | Purpose and access | Reuse/licence position | Attribution and evidence | Production status |
+|---|---|---|---|---|---|
+| EU Consolidated Financial Sanctions List | European Commission, DG FISMA | Daily server-side CSV snapshot from the Financial Sanctions Files service using a dedicated crawler token | EU portal material is generally reusable under the Commission reuse policy/CC BY 4.0 unless a dataset states otherwise. Confirm the file-specific notice when the crawler account is issued. | Name the European Commission, retain the file generation date/checksum, and link each result to EUR-Lex. The Official Journal prevails. | **Conditional:** dedicated crawler token and file-specific terms must be recorded. |
+| EU Sanctions Tracker | Publications Office of the EU / European Commission | Informational fallback and source-discovery aid | data.europa.eu content is generally CC BY 4.0 unless otherwise stated; changes and attribution must be identified. | Name the tracker, record its manifest version, and do not treat it as the legally authoritative record. | **Approved only as fallback.** Its failure or omissions cannot produce a clear result. |
+| EUR-Lex Official Journal supplement | Publications Office of the EU / Council of the EU | Manually reviewed entries from binding legal acts that have not yet appeared in the Commission consolidated file | Reuse under the EU legal notice, with attribution and changes identified. The legal act itself is authoritative. | Store CELEX/ELI link, regulation, listing date, review date and identifiers exactly as published. | **Conditional:** currently contains the verified Alina JUC omission. Review at least weekly; stale review makes EU screening incomplete. |
+| UN Security Council Consolidated List | United Nations | Live official XML list | Review and retain the UN terms applicable to the consolidated list before commercial launch. | Identify the UN Security Council list, checked/update time and official evidence page. | **Conditional:** formal terms review pending. |
+| Malta Asset Recovery Bureau court orders | Malta Asset Recovery Bureau | Live name query against published court-order results | No commercial-reuse approval is recorded in the repository. Public availability alone is insufficient. | Link to the original order and identify the publisher and query time. | **Blocked for public launch** until written permission or clearly applicable reuse terms are retained. |
+| Google web-review links | Google | User-directed links for manual adverse-media review; result pages are not copied | Subject to Google terms. No scraping, bypassing robot controls or republishing result pages. | Store the structured query, not the result page. | **Manual review only.** Automated commercial coverage requires a contracted provider. |
+
+## Review procedure
+
+Before enabling or materially changing a source, record its owner, exact endpoint, intended processing, update frequency, licence/permission, attribution, redistribution limits, personal-data implications, technical limits and approval owner. Save a dated copy or link to the applicable terms. Re-review at least annually and whenever the publisher changes the service.
+
+Known upstream issue: the Commission consolidated file generated 31 July 2026 (43,874 rows) does not contain Alina JUC, although Council Implementing Regulation (EU) 2026/1358 lists her with effect from 15 June 2026. ClearCheck must retain this discrepancy as monitoring evidence and must not describe the consolidated file as complete by itself.

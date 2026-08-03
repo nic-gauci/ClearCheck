@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getBearerToken, getSupabaseAdmin, getSupabaseForToken } from "../../../lib/supabase-server";
 import { getAppUrl, stripeRequest } from "../../../lib/stripe";
+import { logServerError } from "../../../lib/server-log";
 
 export const dynamic="force-dynamic";
 
@@ -15,5 +16,5 @@ export async function POST(request:NextRequest){
     if(!billing?.stripe_customer_id)return NextResponse.json({error:"No Stripe billing account exists yet. Complete a checkout first."},{status:404});
     const session=await stripeRequest("billing_portal/sessions",new URLSearchParams({customer:billing.stripe_customer_id,return_url:`${getAppUrl()}/account`}));
     return NextResponse.json({url:session.url});
-  }catch(error){return NextResponse.json({error:error instanceof Error?error.message:"The billing portal could not be opened."},{status:503})}
+  }catch(error){const incidentId=logServerError("billing.portal",error);return NextResponse.json({error:"The billing portal could not be opened. Try again shortly.",incidentId},{status:503})}
 }

@@ -38,13 +38,16 @@ test("screening API verifies a user and persists an audit record",async()=>{
   assert.match(source,/no screening credits/i);
 });
 
-test("EU screenings use the validated daily stored snapshot",async()=>{
+test("EU screenings use the official Commission consolidated snapshot with safe fallback",async()=>{
   const screening=await readFile(new URL("../app/api/screen/route.ts",import.meta.url),"utf8");
-  const sync=await readFile(new URL("../supabase/functions/sync-eu-sanctions/index.ts",import.meta.url),"utf8");
+  assert.match(screening,/data\.europa\.eu\/apps\/eusanctionstracker/);
+  assert.match(screening,/screenEU\(query,subjectType\)/);
   assert.match(screening,/source_snapshots/);
-  assert.match(screening,/EU_SNAPSHOT_PATH/);
-  assert.doesNotMatch(screening,/csvFullSanctionsList/);
-  assert.match(sync,/csvFullSanctionsList/);
-  assert.match(sync,/REQUIRED_HEADERS/);
-  assert.match(sync,/upsert:\s*true/);
+  assert.match(screening,/eu_consolidated/);
+  assert.match(screening,/screenEUConsolidatedCsv/);
+  assert.match(screening,/Official consolidated list unavailable/);
+  assert.match(screening,/manifest\.json/);
+  assert.match(screening,/subjects\.jsonpack/);
+  assert.match(screening,/jsonpack\.unpack/);
+  assert.doesNotMatch(screening,/gels-avoirs\.dgtresor\.gouv\.fr/);
 });

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getBearerToken, getSupabaseAdmin, getSupabaseForToken } from "../../../lib/supabase-server";
 import { getAppUrl, stripePrices, stripeRead, stripeRequest } from "../../../lib/stripe";
+import { logServerError } from "../../../lib/server-log";
 
 export const dynamic="force-dynamic";
 
@@ -32,7 +33,7 @@ export async function POST(request:NextRequest){
       await admin.from("billing_customers").upsert({organisation_id:membership.organisation_id,stripe_customer_id:customerId});
     }
     const origin=getAppUrl(),mode=plan.billing_mode==="monthly"?"subscription":"payment";
-    const params=new URLSearchParams({customer:customerId,mode,"line_items[0][price]":priceId,"line_items[0][quantity]":"1","automatic_tax[enabled]":"true","tax_id_collection[enabled]":"true",billing_address_collection:"required","customer_update[address]":"auto","customer_update[name]":"auto",success_url:`${origin}/account?billing=success&session_id={CHECKOUT_SESSION_ID}`,cancel_url:`${origin}/account?billing=cancelled`,client_reference_id:membership.organisation_id,"metadata[organisation_id]":membership.organisation_id,"metadata[plan_id]":plan.id,"metadata[price_id]":priceId});
+    const params=new URLSearchParams({customer:customerId,mode,"line_items[0][price]":priceId,"line_items[0][quantity]":"1","automatic_tax[enabled]":"true","tax_id_collection[enabled]":"true",billing_address_collection:"required","customer_update[address]":"auto","customer_update[name]":"auto",success_url:`${origin}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,cancel_url:`${origin}/account?billing=cancelled`,client_reference_id:membership.organisation_id,"metadata[organisation_id]":membership.organisation_id,"metadata[plan_id]":plan.id,"metadata[price_id]":priceId});
     if(mode==="subscription"){
       params.set("subscription_data[metadata][organisation_id]",membership.organisation_id);
       params.set("subscription_data[metadata][plan_id]",plan.id);
@@ -40,5 +41,5 @@ export async function POST(request:NextRequest){
     }
     const session=await stripeRequest("checkout/sessions",params,`clearcheck-checkout-${membership.organisation_id}-${plan.id}-${crypto.randomUUID()}`);
     return NextResponse.json({url:session.url});
-  }catch(error){return NextResponse.json({error:error instanceof Error?error.message:"Checkout could not be created."},{status:503})}
+  }catch(error){const incidentId=logServerError("billing.checkout",error);return NextResponse.json({error:"Checkout could not be created. Try again or contact support with the reference shown.",incidentId},{status:503})}
 }

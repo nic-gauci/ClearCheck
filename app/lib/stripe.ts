@@ -9,6 +9,8 @@ export const stripePrices:Record<string,string|undefined>={
 function stripeKey(){
   const key=process.env.STRIPE_SECRET_KEY;
   if(!key)throw new Error("Stripe is not configured yet.");
+  if(key.startsWith("sk_live_")&&process.env.ALLOW_LIVE_STRIPE!=="true")throw new Error("Live Stripe charges are disabled. Use test credentials until the production launch gate is approved.");
+  if(!key.startsWith("sk_test_")&&!key.startsWith("sk_live_"))throw new Error("The Stripe secret key format is invalid.");
   return key;
 }
 
