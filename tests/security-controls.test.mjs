@@ -1,8 +1,15 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { isMissingRpc } from "../app/lib/supabase-server.ts";
 
 const read=(path)=>readFile(new URL(path,import.meta.url),"utf8");
+
+test("RPC compatibility fallback activates only for the named missing function",()=>{
+  assert.equal(isMissingRpc({code:"PGRST202",message:"Could not find public.record_screening_v2"},"record_screening_v2"),true);
+  assert.equal(isMissingRpc({code:"PGRST202",message:"Could not find another_function"},"record_screening_v2"),false);
+  assert.equal(isMissingRpc({code:"42501",message:"permission denied"},"record_screening_v2"),false);
+});
 
 test("Supabase tables are protected with RLS, scoped policies, and explicit grants",async()=>{
   const [foundation,hardening]=await Promise.all([read("../supabase/migrations/20260731183000_commercial_platform_foundation.sql"),read("../supabase/migrations/20260803020402_billing_audit_privacy_controls.sql")]);

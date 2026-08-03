@@ -35,6 +35,8 @@ test("screening API verifies a user and persists an audit record",async()=>{
   assert.match(source,/getBearerToken/);
   assert.match(source,/auth\.getUser/);
   assert.match(source,/record_screening/);
+  assert.match(source,/isMissingRpc\(recordError,"record_screening_v2"\)/);
+  assert.match(source,/supabase\.rpc\("record_screening",legacyPayload\)/);
   assert.match(source,/no screening credits/i);
 });
 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import jsonpack from "jsonpack";
-import { getBearerToken, getSupabaseAdmin, getSupabaseForToken } from "../../lib/supabase-server";
+import { getBearerToken, getSupabaseAdmin, getSupabaseForToken, isMissingRpc } from "../../lib/supabase-server";
 import { screenEUConsolidatedCsv } from "../../lib/eu-sanctions";
 import { matchNames, normalizeName } from "../../lib/name-matching";
 import { logServerError } from "../../lib/server-log";
@@ -102,7 +102,7 @@ export async function GET(request:NextRequest){
   const checkedAt=new Date().toISOString();
   sources.push({key:"WEB",name:"Google web checks",status:"review",count:webSearches.length,checkedAt,message:"Four structured Google searches prepared for human review"});
   const riskState=sources.some(source=>source.status==="unavailable")?"incomplete":"review";
-  const {data:record,error:recordError}=await getSupabaseAdmin().rpc("record_screening_v2",{
+  const auditPayload={
     p_actor_id:user.id,
     p_organisation_id:membership.organisation_id,
     p_subject_name:query,
@@ -112,7 +112,21 @@ export async function GET(request:NextRequest){
     p_sources:sources,
     p_web_searches:webSearches,
     p_checked_at:checkedAt,
-  }).single();
+  };
+  let {data:record,error:recordError}=await getSupabaseAdmin().rpc("record_screening_v2",auditPayload).single();
+  if(isMissingRpc(recordError,"record_screening_v2")){
+    const legacyPayload={
+      p_organisation_id:auditPayload.p_organisation_id,
+      p_subject_name:auditPayload.p_subject_name,
+      p_subject_type:auditPayload.p_subject_type,
+      p_risk_state:auditPayload.p_risk_state,
+      p_results:auditPayload.p_results,
+      p_sources:auditPayload.p_sources,
+      p_web_searches:auditPayload.p_web_searches,
+      p_checked_at:auditPayload.p_checked_at,
+    };
+    ({data:record,error:recordError}=await supabase.rpc("record_screening",legacyPayload).single());
+  }
   if(recordError){
     const noCredits=recordError.message.toLowerCase().includes("no screening credits");
     const incidentId=noCredits?undefined:logServerError("screening.audit_record",recordError);
