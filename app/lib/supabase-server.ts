@@ -5,6 +5,12 @@ export function getBearerToken(request:Request){
   return value.toLowerCase().startsWith("bearer ")?value.slice(7).trim():"";
 }
 
+export function isMissingRpc(error:unknown,functionName:string){
+  if(!error||typeof error!=="object")return false;
+  const value=error as {code?:string;message?:string};
+  return value.code==="PGRST202"&&Boolean(value.message?.includes(functionName));
+}
+
 export function getSupabaseForToken(token:string){
   const url=process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key=process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;

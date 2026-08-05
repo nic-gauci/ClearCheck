@@ -7,6 +7,12 @@ export type ScreeningMatch = {
   detail:string;
   meta:string[];
   href:string;
+  aliases?:string[];
+  dateOfBirth?:string;
+  nationalities?:string[];
+  identificationNumbers?:string[];
+  matchReason?:string;
+  legalBasis?:string;
 };
 
 export type ScreeningSource = {
@@ -16,6 +22,10 @@ export type ScreeningSource = {
   count:number;
   checkedAt:string;
   message?:string;
+  sourceUrl?:string;
+  version?:string;
+  lastUpdated?:string;
+  licence?:string;
 };
 
 export type WebSearch = { term:string; label:string; query:string; href:string };

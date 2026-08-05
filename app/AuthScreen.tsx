@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 import Link from "next/link";
 import { getSupabaseBrowserClient } from "./lib/supabase";
+import MyAccountLink from "./MyAccountLink";
 
 type AuthMode = "login" | "register";
 
@@ -60,7 +61,7 @@ export default function AuthScreen({mode}:{mode:AuthMode}){
   return <main className="authPage">
     <header className="authHeader">
       <Link className="brand" href="/" aria-label="ClearCheck home"><span className="brandMark">C</span><span>ClearCheck</span></Link>
-      <div><span>{registering?"Already have an account?":"New to ClearCheck?"}</span><Link href={registering?"/login":"/register"}>{registering?"Log in":"Create account"}</Link></div>
+      <div><span>{registering?"Already have an account?":"New to ClearCheck?"}</span><Link href={registering?"/login":"/register"}>{registering?"Log in":"Create account"}</Link><MyAccountLink/></div>
     </header>
     <section className="authLayout">
       <aside className="authStory">

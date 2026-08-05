@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { getSupabaseBrowserClient } from "./lib/supabase";
+import MyAccountLink from "./MyAccountLink";
 
 export default function AuthNav(){
   const [signedIn,setSignedIn]=useState(false);
@@ -16,6 +17,6 @@ export default function AuthNav(){
   },[]);
 
   return signedIn
-    ?<Link className="headerCta" href="/account">My account</Link>
-    :<><Link className="headerLogin" href="/login">Log in</Link><Link className="headerCta" href="/register">Register</Link></>;
+    ?<MyAccountLink className="headerCta"/>
+    :<><Link className="headerLogin" href="/login">Log in</Link><Link className="headerCta" href="/register">Register</Link><MyAccountLink className="headerAccount"/></>;
 }
