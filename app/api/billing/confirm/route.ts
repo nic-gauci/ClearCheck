@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getBearerToken, getSupabaseAdmin, getSupabaseForToken } from "../../../lib/supabase-server";
 import { stripePrices, stripeRead } from "../../../lib/stripe";
+import { logServerError } from "../../../lib/server-log";
+import { isMissingStripeV2Function } from "../../../lib/billing-events";
 
 export const dynamic="force-dynamic";
 
@@ -45,7 +47,7 @@ export async function POST(request:NextRequest){
       currentPeriodEnd=subscription.current_period_end?new Date(subscription.current_period_end*1000).toISOString():null;
     }
 
-    const {data:processed,error}=await admin.rpc("process_stripe_event",{
+    let {data:processed,error}=await admin.rpc("process_stripe_event_v2",{
       p_event_id:reference,
       p_event_type:"checkout.session.confirmed",
       p_organisation_id:membership.organisation_id,
@@ -55,9 +57,24 @@ export async function POST(request:NextRequest){
       p_subscription_status:subscriptionStatus,
       p_current_period_end:currentPeriodEnd,
       p_grant_credits:true,
+      p_amount_paid_cents:session.amount_total||null,
+      p_currency:(session.currency||"").toUpperCase()||null,
     });
+    if(isMissingStripeV2Function(error)){
+      ({data:processed,error}=await admin.rpc("process_stripe_event",{
+        p_event_id:reference,
+        p_event_type:"checkout.session.confirmed",
+        p_organisation_id:membership.organisation_id,
+        p_plan_id:planId,
+        p_customer_id:session.customer||null,
+        p_subscription_id:session.subscription||null,
+        p_subscription_status:subscriptionStatus,
+        p_current_period_end:currentPeriodEnd,
+        p_grant_credits:true,
+      }));
+    }
     if(error)throw error;
     const {data:plan}=await admin.from("plans").select("name,credits,price_cents").eq("id",planId).single();
     return NextResponse.json({purchase:{planName:plan?.name||"ClearCheck plan",credits:plan?.credits||0,amount:session.amount_total||plan?.price_cents||0,currency:(session.currency||"eur").toUpperCase()},alreadyProcessed:processed===false});
-  }catch(error){return NextResponse.json({error:error instanceof Error?error.message:"The purchase could not be confirmed."},{status:503})}
+  }catch(error){const incidentId=logServerError("billing.confirm",error);return NextResponse.json({error:"The payment could not be confirmed yet. No duplicate credits will be issued when you retry.",incidentId},{status:503})}
 }
