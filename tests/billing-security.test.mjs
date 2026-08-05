@@ -10,7 +10,11 @@ test("checkout returns through the success screen and live charging is gated",as
   const [checkout,stripe,success]=await Promise.all([read("../app/api/billing/checkout/route.ts"),read("../app/lib/stripe.ts"),read("../app/checkout/success/page.tsx")]);
   assert.match(checkout,/\/checkout\/success\?session_id=\{CHECKOUT_SESSION_ID\}/);
   assert.match(checkout,/getAppUrl\(request\.nextUrl\.origin\)/);
-  assert.match(success,/\/account\?billing=success&session_id=/);
+  assert.match(success,/\/api\/billing\/confirm/);
+  assert.match(success,/Purchase successful/);
+  assert.match(success,/Start screening/);
+  assert.doesNotMatch(success,/window\.location\.replace\(`\/account\?billing=success/);
+  assert.match(checkout,/\/checkout\/cancelled/);
   assert.match(stripe,/ALLOW_LIVE_STRIPE/);
   assert.match(stripe,/sk_live_/);
   assert.equal(resolveAppUrl("http://localhost:3000","http://localhost:3002"),"http://localhost:3002");
