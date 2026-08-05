@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { jsPDF } from "jspdf";
 import type { User } from "@supabase/supabase-js";
 import AuthNav from "./AuthNav";
+import MyAccountLink from "./MyAccountLink";
 import { getSupabaseBrowserClient } from "./lib/supabase";
 import type { SavedScreening } from "./lib/screening";
 
@@ -182,5 +183,5 @@ export default function Home(){
   </main>
 }
 
-function Header({onHome,showNav=false}:{onHome:()=>void;showNav?:boolean}){return <header className="topbar"><button className="brand brandButton" onClick={onHome} aria-label="ClearCheck home"><span className="brandMark">C</span><span>ClearCheck</span></button>{showNav&&<nav aria-label="Main navigation"><a href="#platform">Platform</a><a href="#coverage">Coverage</a><a href="#industries">Industries</a><a href="#pricing">Pricing</a></nav>}<div className="headerRight">{!showNav&&<><span className="sourceCount"><i/> Sources online</span><span className="privateLabel">PRIVATE BETA</span></>}{showNav&&<AuthNav/>}</div></header>}
+function Header({onHome,showNav=false}:{onHome:()=>void;showNav?:boolean}){return <header className="topbar"><button className="brand brandButton" onClick={onHome} aria-label="ClearCheck home"><span className="brandMark">C</span><span>ClearCheck</span></button>{showNav&&<nav aria-label="Main navigation"><a href="#platform">Platform</a><a href="#coverage">Coverage</a><a href="#industries">Industries</a><a href="#pricing">Pricing</a></nav>}<div className="headerRight">{!showNav&&<><span className="sourceCount"><i/> Sources online</span><span className="privateLabel">PRIVATE BETA</span><MyAccountLink className="headerAccount"/></>}{showNav&&<AuthNav/>}</div></header>}
 function Footer(){return <footer className="siteFooter"><div className="footerBrand"><span className="brandMark">C</span><div><strong>ClearCheck</strong><p>AML screening, made clear.</p></div></div><div className="footerLinks"><div><strong>Platform</strong><a href="#platform">Screening</a><a href="#coverage">Coverage</a><a href="#pricing">Pricing</a></div><div><strong>Use cases</strong><a href="#industries">Financial services</a><a href="#industries">Legal teams</a><a href="#industries">Real estate</a></div><div><strong>Governance</strong><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/security">Security</a><a href="/providers">Data sources</a></div></div><div className="footerBottom"><span>© 2026 ClearCheck</span><span>Independent screening workspace · Source data belongs to its respective publishers</span></div></footer>}

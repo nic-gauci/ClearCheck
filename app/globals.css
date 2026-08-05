@@ -14,6 +14,8 @@ a { color:inherit; text-decoration:none; }
 .privateLabel { font-size:8px; letter-spacing:1.3px; font-weight:800; color:#5b6d69; border:1px solid #cfd8d3; padding:7px 9px; border-radius:2px; }
 .brandMark { width:31px; height:31px; display:grid; place-items:center; border-radius:50%; background:var(--ink); color:#fff; font-family:Arial, Helvetica, sans-serif; font-style:italic; }
 .headerRight,.sourceCount { display:flex; align-items:center; gap:14px; }
+.headerAccount,.myAccountButton,.resetAccountLink,.checkoutAccountLink { display:inline-flex; align-items:center; justify-content:center; height:40px; padding:0 16px; border:1px solid #c7d5cf; border-radius:7px; background:#fff; color:#173b35; font-size:10px; font-weight:800; white-space:nowrap; }
+.headerAccount:hover,.myAccountButton:hover,.resetAccountLink:hover,.checkoutAccountLink:hover { border-color:#86ab9d; background:#f5faf7; }
 .sourceCount { font-size:12px; color:#536763; gap:8px; }
 .sourceCount i { width:7px; height:7px; border-radius:50%; background:#1f8b66; box-shadow:0 0 0 4px #dceee7; }
 .avatar { border:0; width:34px; height:34px; border-radius:50%; background:#e8ebe5; font-size:11px; color:var(--ink); }
@@ -133,3 +135,8 @@ footer { min-height:75px; background:#0c2423; color:#8fa39e; display:flex; align
 .privacyActions button{min-height:34px;padding:0 10px;border:1px solid #cfdbd6;border-radius:6px;background:#fff;color:#286653;font-size:8px;font-weight:800;cursor:pointer}
 .privacyActions .dangerLink{margin:0;color:#a14c30;border-color:#e4c2b6}
 .privacyActions button:disabled{opacity:.55;cursor:wait}
+
+/* Keep account access visible in every screen header and transition state. */
+.resetPage,.checkoutRedirectPage{position:relative}
+.resetAccountLink,.checkoutAccountLink{position:absolute;top:20px;right:20px}
+@media(max-width:720px){.accountHeader>div>.myAccountButton{display:inline-flex}}
