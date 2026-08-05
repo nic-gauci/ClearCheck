@@ -3,7 +3,7 @@
 import { FormEvent, useState } from "react";
 import Link from "next/link";
 import { getSupabaseBrowserClient } from "./lib/supabase";
-import MyAccountLink from "./MyAccountLink";
+import AppHeader from "./AppHeader";
 
 type AuthMode = "login" | "register";
 
@@ -13,21 +13,24 @@ export default function AuthScreen({mode}:{mode:AuthMode}){
   const [notice,setNotice]=useState("");
   const [error,setError]=useState("");
   const [email,setEmail]=useState("");
+  const [password,setPassword]=useState("");
+  const [confirmPassword,setConfirmPassword]=useState("");
   const [loading,setLoading]=useState(false);
 
   async function submit(event:FormEvent<HTMLFormElement>){
     event.preventDefault();
     setLoading(true);setNotice("");setError("");
     const form=new FormData(event.currentTarget);
-    const password=String(form.get("password")||"");
+    const submittedPassword=String(form.get("password")||"");
     try{
       const supabase=getSupabaseBrowserClient();
       if(registering){
+        if(submittedPassword!==confirmPassword)throw new Error("The passwords do not match.");
         const firstName=String(form.get("firstName")||"").trim();
         const lastName=String(form.get("lastName")||"").trim();
         const company=String(form.get("company")||"").trim();
         const {data,error:signUpError}=await supabase.auth.signUp({
-          email,password,
+          email,password:submittedPassword,
           options:{
             emailRedirectTo:`${window.location.origin}/account`,
             data:{first_name:firstName,last_name:lastName,full_name:`${firstName} ${lastName}`.trim(),company},
@@ -37,7 +40,7 @@ export default function AuthScreen({mode}:{mode:AuthMode}){
         if(data.session){window.location.assign("/account");return}
         setNotice("Account created. Check your inbox and confirm your email address, then log in.");
       }else{
-        const {error:signInError}=await supabase.auth.signInWithPassword({email,password});
+        const {error:signInError}=await supabase.auth.signInWithPassword({email,password:submittedPassword});
         if(signInError)throw signInError;
         const requested=new URLSearchParams(window.location.search).get("returnTo")||"/account";
         window.location.assign(requested.startsWith("/")&&!requested.startsWith("//")?requested:"/account");
@@ -59,10 +62,7 @@ export default function AuthScreen({mode}:{mode:AuthMode}){
   }
 
   return <main className="authPage">
-    <header className="authHeader">
-      <Link className="brand" href="/" aria-label="ClearCheck home"><span className="brandMark">C</span><span>ClearCheck</span></Link>
-      <div><span>{registering?"Already have an account?":"New to ClearCheck?"}</span><Link href={registering?"/login":"/register"}>{registering?"Log in":"Create account"}</Link><MyAccountLink/></div>
-    </header>
+    <AppHeader variant="auth" authPrompt={registering?"Already have an account?":"New to ClearCheck?"} authHref={registering?"/login":"/register"} authLabel={registering?"Log in":"Create account"}/>
     <section className="authLayout">
       <aside className="authStory">
         <div className="authOrb authOrbOne"/><div className="authOrb authOrbTwo"/>
@@ -84,21 +84,22 @@ export default function AuthScreen({mode}:{mode:AuthMode}){
           <h2>{registering?"Create your account":"Log in to ClearCheck"}</h2>
           <p>{registering?"Set up your details now. No payment is required during the private beta.":"Enter your work email and password to continue."}</p>
           <form onSubmit={submit} className="authForm">
-            {registering&&<div className="authFieldRow">
+            {registering&&<fieldset className="authGroup"><legend>Personal details</legend><div className="authFieldRow">
               <label>First name<input name="firstName" autoComplete="given-name" required placeholder="First name"/></label>
               <label>Last name<input name="lastName" autoComplete="family-name" required placeholder="Last name"/></label>
-            </div>}
-            {registering&&<label>Company or organisation <span>Optional</span><input name="company" autoComplete="organization" placeholder="Organisation name"/></label>}
-            <label>Work email<input name="email" type="email" autoComplete="email" required placeholder="name@company.com" value={email} onChange={event=>setEmail(event.target.value)}/></label>
-            <label>Password <span>{registering?"Minimum 8 characters":""}</span><div className="passwordField"><input name="password" type={showPassword?"text":"password"} autoComplete={registering?"new-password":"current-password"} minLength={registering?8:undefined} required placeholder={registering?"Create a secure password":"Enter your password"}/><button type="button" onClick={()=>setShowPassword(value=>!value)} aria-label={showPassword?"Hide password":"Show password"}>{showPassword?"Hide":"Show"}</button></div></label>
+            </div></fieldset>}
+            {registering&&<fieldset className="authGroup"><legend>Workspace</legend><label>Company or organisation <span>Optional</span><input name="company" autoComplete="organization" placeholder="Organisation name"/></label></fieldset>}
+            <fieldset className="authGroup"><legend>{registering?"Security":"Account details"}</legend><label>Work email<input name="email" type="email" autoComplete="email" required placeholder="name@company.com" value={email} onChange={event=>setEmail(event.target.value)}/></label>
+            <label>Password <span>{registering?"8+ characters":""}</span><div className="passwordField"><input name="password" type={showPassword?"text":"password"} autoComplete={registering?"new-password":"current-password"} minLength={registering?8:undefined} required placeholder={registering?"Create a secure password":"Enter your password"} value={password} onChange={event=>setPassword(event.target.value)}/><button type="button" onClick={()=>setShowPassword(value=>!value)} aria-label={showPassword?"Hide password":"Show password"}>{showPassword?"Hide":"Show"}</button></div></label>
+            {registering&&<><label>Confirm password<input name="confirmPassword" type={showPassword?"text":"password"} autoComplete="new-password" minLength={8} required placeholder="Repeat your password" value={confirmPassword} onChange={event=>setConfirmPassword(event.target.value)}/></label><div className="passwordChecks" aria-live="polite"><span className={password.length>=8?"met":""}>✓ At least 8 characters</span><span className={password&&password===confirmPassword?"met":""}>✓ Passwords match</span></div></>}
+            </fieldset>
             {!registering&&<div className="authOptions"><label><input type="checkbox" name="remember" defaultChecked/> Keep me signed in</label><button type="button" disabled={loading} onClick={resetPassword}>Forgot password?</button></div>}
             {registering&&<label className="termsCheck"><input type="checkbox" required/><span>I agree to the <Link href="/terms" target="_blank">Terms of Use</Link> and <Link href="/privacy" target="_blank">Privacy Policy</Link> and understand that screening results require human review.</span></label>}
             <button className="authSubmit" type="submit" disabled={loading}>{loading?"Please wait…":registering?"Create account":"Log in"}<span>→</span></button>
           </form>
           {error&&<div className="authNotice authError" role="alert"><span>!</span><p>{error}</p></div>}
           {notice&&<div className="authNotice" role="status"><span>i</span><p>{notice}</p></div>}
-          <div className="authSwitch"><span>{registering?"Already registered?":"Don’t have an account?"}</span><Link href={registering?"/login":"/register"}>{registering?"Log in":"Create an account"}</Link></div>
-          <small className="authBeta">PRIVATE BETA · SECURED BY SUPABASE AUTH</small>
+          <small className="authBeta">Secure encrypted sign-in · Human review required</small>
         </div>
       </div>
     </section>

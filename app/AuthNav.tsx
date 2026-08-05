@@ -18,5 +18,5 @@ export default function AuthNav(){
 
   return signedIn
     ?<MyAccountLink className="headerCta"/>
-    :<><Link className="headerLogin" href="/login">Log in</Link><Link className="headerCta" href="/register">Register</Link><MyAccountLink className="headerAccount"/></>;
+    :<><Link className="headerLogin" href="/login">Log in</Link><Link className="headerCta" href="/register">Create account</Link></>;
 }

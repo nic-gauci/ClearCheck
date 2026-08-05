@@ -17,7 +17,7 @@ test("server-renders the ClearCheck product home page",async()=>{
   assert.match(html,/<title>ClearCheck — AML Screening, Made Clear<\/title>/i);
   assert.match(html,/Compliance checks/);
   assert.match(html,/Log in to run screening/);
-  assert.match(html,/My account/);
+  assert.match(html,/Create your workspace/);
   assert.match(html,/25[\s\S]*complimentary credits/);
   assert.doesNotMatch(html,/codex-preview|Your site is taking shape|react-loading-skeleton/i);
 });
@@ -27,7 +27,8 @@ test("renders governance pages and removes the starter preview",async()=>{
     const response=await render(path),html=await response.text();
     assert.equal(response.status,200);
     assert.match(html,new RegExp(heading,"i"));
-    assert.match(html,/My account/);
+    assert.match(html,/Back to website/);
+    assert.match(html,/On this page/);
   }
   await assert.rejects(access(new URL("../app/_sites-preview",import.meta.url)));
 });
