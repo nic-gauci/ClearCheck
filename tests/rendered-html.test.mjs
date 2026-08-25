@@ -33,6 +33,18 @@ test("renders governance pages and removes the starter preview",async()=>{
   await assert.rejects(access(new URL("../app/_sites-preview",import.meta.url)));
 });
 
+test("shared headers provide a persistent accessible light and dark theme",async()=>{
+  const [header,layout,styles]=await Promise.all([readFile(new URL("../app/AppHeader.tsx",import.meta.url),"utf8"),readFile(new URL("../app/layout.tsx",import.meta.url),"utf8"),readFile(new URL("../app/globals.css",import.meta.url),"utf8")]);
+  assert.match(header,/className={`themeToggle \$\{theme\}`}/);
+  assert.match(header,/Switch to light mode/);
+  assert.match(header,/Switch to dark mode/);
+  assert.match(header,/localStorage\.setItem\("clearcheck-theme",next\)/);
+  assert.match(layout,/prefers-color-scheme: dark/);
+  assert.match(layout,/clearcheck-theme/);
+  assert.match(styles,/Final dark palette/);
+  for(const surface of ["appHeader","authCard","dashboardPanel","resultSection","sourceRegister"]){assert.match(styles,new RegExp(surface))}
+});
+
 test("screening API verifies a user and persists an audit record",async()=>{
   const source=await readFile(new URL("../app/api/screen/route.ts",import.meta.url),"utf8");
   assert.match(source,/getBearerToken/);

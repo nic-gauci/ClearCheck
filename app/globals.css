@@ -166,8 +166,8 @@ footer { min-height:75px; background:#0c2423; color:#8fa39e; display:flex; align
 .headerCta.secondary{border:1px solid #c7d5cf;background:#fff;color:#173b35}
 .headerLogout{height:40px;padding:0 15px;border:1px solid #c7d5cf;border-radius:7px;background:#fff;color:#294a43;font-size:11px;font-weight:750;cursor:pointer}
 .authPrompt{color:#71817d;font-size:12px}
-.themeToggle{width:40px;height:40px;flex:0 0 auto;display:grid;place-items:center;margin-right:12px;border:1px solid #ccd9d4;border-radius:50%;background:#f7faf8;color:#244d43;cursor:pointer;transition:transform .18s ease,background-color .18s ease,border-color .18s ease,color .18s ease}
-.themeToggle:hover{transform:rotate(8deg);border-color:#86ab9d;background:#edf5f1}.themeToggle span{font:600 19px/1 Arial,Helvetica,sans-serif}
+.themeToggle{width:62px;height:34px;flex:0 0 auto;display:block;margin-right:12px;padding:3px;border:1px solid #ccd9d4;border-radius:99px;background:#edf3f0;color:#647a74;cursor:pointer;transition:background-color .18s ease,border-color .18s ease,color .18s ease}
+.themeToggle:hover{border-color:#86ab9d;background:#e4eee9}.themeToggle>span{height:26px;display:grid;grid-template-columns:1fr 1fr;align-items:center;position:relative}.themeToggle i{height:26px;display:grid;place-items:center;position:relative;z-index:2;font:normal 14px/1 Arial,Helvetica,sans-serif}.themeToggle>span:before{content:"";position:absolute;top:0;left:0;width:26px;height:26px;border-radius:50%;background:#fff;box-shadow:0 2px 7px #173d3426;transition:transform .2s ease,background-color .2s ease}.themeToggle.dark>span:before{transform:translateX(28px)}.themeToggle.light i:first-child,.themeToggle.dark i:last-child{color:#a45a25}.themeToggle.light i:last-child,.themeToggle.dark i:first-child{color:#7b8e88}
 .appHeader.auth .themeToggle{margin-left:auto}
 .menuButton{display:none;width:42px;height:42px;padding:10px;border:1px solid #ccd9d4;border-radius:8px;background:#fff;cursor:pointer}
 .menuButton span{display:block;height:2px;margin:4px 0;border-radius:2px;background:#21453d}
@@ -233,7 +233,7 @@ footer { min-height:75px; background:#0c2423; color:#8fa39e; display:flex; align
   .legalLayout{grid-template-columns:1fr;gap:25px}.legalToc{position:static}.legalToc nav{display:flex;gap:8px;overflow-x:auto;padding-bottom:3px}.legalToc a{flex:0 0 auto;padding:8px 10px;border:1px solid #dce6e1;border-radius:99px;font-size:11px}
 }
 @media(max-width:700px){
-  .appHeader{height:68px;padding:0 17px}.appHeader .brand{font-size:17px}.appHeader .brandMark{width:29px;height:29px}.appHeader.public .desktopActions .headerCta,.appHeader.legal .desktopActions .headerCta{height:38px;padding:0 11px;font-size:10px}.themeToggle{width:37px;height:37px}.menuButton{width:38px;height:38px}.mobileMenu{top:60px}
+  .appHeader{height:68px;padding:0 17px}.appHeader .brand{font-size:17px}.appHeader .brandMark{width:29px;height:29px}.appHeader.public .desktopActions .headerCta,.appHeader.legal .desktopActions .headerCta{height:38px;padding:0 11px;font-size:10px}.themeToggle{width:58px;height:32px}.themeToggle>span,.themeToggle i,.themeToggle>span:before{height:24px}.themeToggle>span:before{width:24px}.themeToggle.dark>span:before{transform:translateX(26px)}.menuButton{width:38px;height:38px}.mobileMenu{top:60px}
   .kycHero{padding:38px 18px 45px}.kycHeroInner{gap:30px}.heroCopy h1{font-size:40px;margin:18px 0}.heroCopy>p{font-size:14px;line-height:1.55}.heroBenefits{margin-top:20px}.heroProof{margin-top:25px;padding-top:18px;flex-wrap:nowrap;overflow-x:auto}.heroProof>*{flex:0 0 auto}.screenCard{padding:19px}
   .industryGrid{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:12px}.industryGrid article{min-width:270px;scroll-snap-align:start}
   .resultHead{display:grid;gap:18px}.reportPage .resultActions{position:static;width:100%;display:grid;grid-template-columns:1fr 1fr}.anotherScreening,.export{min-height:44px;padding:0 10px;font-size:10px}.export:first-letter{font-size:inherit}
@@ -354,3 +354,71 @@ html[data-theme="dark"] .controlStatus .verification{background:#33251f;border-c
   .purchaseTable{--purchase-columns:minmax(190px,1.35fr) minmax(112px,.72fr) minmax(80px,.5fr) minmax(110px,.68fr) minmax(92px,.56fr) minmax(112px,.68fr)}
   .purchaseRow{grid-template-columns:var(--purchase-columns)}
 }
+
+/* Final dark palette — kept last so every product surface has reliable contrast. */
+html[data-theme="dark"]{--dark-bg:#081310;--dark-header:#0b1916;--dark-surface:#10211d;--dark-raised:#152924;--dark-soft:#1a302a;--dark-line:#2b4840;--dark-text:#edf6f2;--dark-muted:#a5b9b2;--dark-subtle:#81978f;--dark-green:#78c9a8;--dark-orange:#e17a49}
+html[data-theme="dark"] body{background:var(--dark-bg)!important;color:var(--dark-text)!important}
+html[data-theme="dark"] body :is(.appHeader,.topbar,.homePage .topbar,.accountHeader){background:var(--dark-header)!important;border-color:var(--dark-line)!important;color:var(--dark-text)!important;box-shadow:0 1px 0 #0005}
+html[data-theme="dark"] body .appHeader .brand{color:var(--dark-text)!important}
+html[data-theme="dark"] body .appHeader .brandMark{background:#d9ebe4!important;color:#10251f!important;box-shadow:0 0 0 1px #ffffff1a}
+html[data-theme="dark"] body .appHeader :is(.desktopNav a,.legalBack a,.authPrompt,.headerLogin){color:#b7c9c3!important}
+html[data-theme="dark"] body .appHeader :is(.desktopNav a,.legalBack a,.headerLogin):hover{color:#8cdbba!important}
+html[data-theme="dark"] body .appHeader .headerCta:not(.secondary){background:#dcece6!important;color:#10251f!important}
+html[data-theme="dark"] body .appHeader :is(.headerCta.secondary,.headerLogout,.menuButton){background:#142722!important;border-color:#35554d!important;color:#dceae5!important}
+html[data-theme="dark"] body .appHeader .menuButton span{background:#d8e8e2!important}
+html[data-theme="dark"] body .themeToggle{background:#172b26!important;border-color:#36574e!important;color:#8da49c!important;box-shadow:inset 0 0 0 1px #0003}
+html[data-theme="dark"] body .themeToggle>span:before{background:#dcebe5!important;box-shadow:0 2px 9px #0008}
+html[data-theme="dark"] body .themeToggle.dark i:first-child{color:#698079!important}
+html[data-theme="dark"] body .themeToggle.dark i:last-child{color:#153329!important}
+html[data-theme="dark"] body .mobileMenu{background:#10211d!important;border-color:var(--dark-line)!important;box-shadow:0 20px 50px #0009}
+html[data-theme="dark"] body .mobileMenu :is(a,button){color:#dceae5!important}html[data-theme="dark"] body .mobileMenu :is(a,button):hover{background:#1a332c!important}
+
+html[data-theme="dark"] body :is(.homePage,.dashboardPage,.accountPage,.checkoutSuccessPage,.legalPage,.reportPage,.authPage,.resetPage,.accountLoading){background:var(--dark-bg)!important;color:var(--dark-text)!important}
+html[data-theme="dark"] body :is(.homeInfo,.platformSection,.workflowSection,.industrySection,.coverageSection,.finalCta,.dashboardShell,.accountContent,.resultCanvas,.legalLayout){background:var(--dark-bg)!important}
+html[data-theme="dark"] body .authFormSide{background:radial-gradient(circle at 80% 10%,#1a342c 0,transparent 35%),linear-gradient(145deg,#091512,#10211d)!important}
+html[data-theme="dark"] body .accountTabs{background:#0e1d1a!important;border-color:var(--dark-line)!important}
+html[data-theme="dark"] body .accountTabs button{color:#9eb3ac!important}html[data-theme="dark"] body .accountTabs button:hover,html[data-theme="dark"] body .accountTabs button.active{color:#8bd5b6!important}html[data-theme="dark"] body .accountTabs button.active{border-bottom-color:#65bd99!important}
+
+html[data-theme="dark"] body main :is(h1,h2,h3){color:var(--dark-text)}
+html[data-theme="dark"] body main :is(p,small,dt){color:var(--dark-muted)}
+html[data-theme="dark"] body main :is(label,dd){color:#d5e4df}
+html[data-theme="dark"] body main :is(.sectionKicker,.panelKicker,.authKicker,.panelHeading>div>span,.dashboardStats small,.profileTitle small,.accountNext>span){color:var(--dark-green)!important}
+html[data-theme="dark"] body main :is(.caseRef,.billingFootnote,.screenCardMeta,.resultSectionHead>p,.webNote){color:var(--dark-subtle)!important}
+
+html[data-theme="dark"] body :is(.screenCard,.metricBand,.platformGrid article:not(.featurePrimary),.industryGrid article,.coverageList>div,.betaCard,.dashboardStats article,.dashboardPanel,.profileCard,.checkoutSuccessShell,.authCard,.resetCard,.legalToc,.legalSummary article,.sourceRegister>div:not(.sourceRegisterHead),.resultMetrics article,.resultSection,.resultSection .sourceReport>article,.identifierGrid>div,.historyRow,.purchaseRow,.purchaseReceipt span,.infoCards article,.workspace,.reportPage .resultActions){background:var(--dark-surface)!important;border-color:var(--dark-line)!important;color:var(--dark-text)!important;box-shadow:0 12px 32px #0003!important}
+html[data-theme="dark"] body :is(.planGrid article,.resultSection .sourceReport>article,.historyRow,.purchaseRow,.sourceRegister>div:not(.sourceRegisterHead)){background:#12241f!important}
+html[data-theme="dark"] body :is(.coverageList>div,.historyRow,.purchaseRow,.sourceRegister>div:not(.sourceRegisterHead),.resultSection .sourceReport>article):hover{background:var(--dark-raised)!important;border-color:#42665c!important;box-shadow:0 12px 28px #0004!important}
+html[data-theme="dark"] body :is(.historyLabels,.purchaseLabels,.sourceRegisterHead){background:transparent!important;border-color:transparent!important;color:#8ea49d!important;box-shadow:none!important}
+html[data-theme="dark"] body :is(.historyRow,.purchaseRow,.sourceRegister>div,.profileTitle,.profileCard dl>div,.resultSection .sourceReport dl,.authGroup legend,.authBeta,.trustStrip,.workflowGrid,.accountTabs){border-color:var(--dark-line)!important}
+
+html[data-theme="dark"] body :is(.search,.kycSearch label>div,.authForm label>input,.passwordField,.settingsForm input,.settingsForm select){background:#0b1916!important;border-color:#35544c!important;color:var(--dark-text)!important;box-shadow:none}
+html[data-theme="dark"] body :is(.search input,.kycSearch input,.passwordField input){background:transparent!important;color:var(--dark-text)!important}
+html[data-theme="dark"] body input::placeholder{color:#6f8780!important}
+html[data-theme="dark"] body :is(.search,.kycSearch label>div,.authForm label>input,.passwordField,.settingsForm input,.settingsForm select):focus-within{border-color:#65b795!important;box-shadow:0 0 0 3px #65b79522!important}
+html[data-theme="dark"] body :is(.typeTabs,.passwordControl,.webTabs button>span,.notice,.resultNotice){background:var(--dark-soft)!important;border-color:var(--dark-line)!important;color:var(--dark-muted)!important}
+html[data-theme="dark"] body .typeTabs button{color:#9db1aa!important}html[data-theme="dark"] body .typeTabs button.active{background:#28473e!important;color:#fff!important;box-shadow:0 3px 10px #0005!important}
+
+html[data-theme="dark"] body :is(.webSection .webToggle,.webTabs button,.googleFrames){background:var(--dark-surface)!important;border-color:var(--dark-line)!important;color:var(--dark-text)!important}
+html[data-theme="dark"] body .webSection .webToggle:hover{background:var(--dark-raised)!important}
+html[data-theme="dark"] body .webTabs button.active{background:#203b33!important;border-color:#57947e!important;box-shadow:inset 0 -2px #6bc29e!important}
+html[data-theme="dark"] body :is(.viewAllButton,.portalButton,.panelHeading>a,.invoiceButton,.privacyActions button,.successActions a,.historyRow>span:last-child button,.export){background:#172c27!important;border-color:#3b5a52!important;color:#bfe0d4!important}
+html[data-theme="dark"] body :is(.anotherScreening,.historyRow>span:last-child a,.settingsForm>button,.successActions a:first-child){background:#d9eae4!important;border-color:#d9eae4!important;color:#10251f!important}
+html[data-theme="dark"] body :is(.dashboardHero>a,.authSubmit,.planGrid button,.kycSearch>button,.betaCard a,.resultHero .export){background:var(--dark-orange)!important;color:#fff!important}
+
+html[data-theme="dark"] body :is(.decisionPanel.review,.emptyResult,.checkoutAccountSuccess,.authNotice){background:#142e26!important;border-color:#31584b!important;color:#d9eae3!important}
+html[data-theme="dark"] body :is(.decisionPanel.incomplete,.decisionPanel:not(.review),.resultSection .sourceReport>article.unavailable,.authNotice.authError,.reportPage .searchError){background:#35231d!important;border-color:#744a39!important;color:#f3d2c4!important}
+html[data-theme="dark"] body .resultSection .sourceReport>article.review{background:#30291c!important;border-color:#675735!important}
+html[data-theme="dark"] body :is(.decisionPanel p,.emptyResult p,.checkoutAccountSuccess p,.authNotice p){color:#b7cbc3!important}
+html[data-theme="dark"] body :is(.emptyHistory,.emptyPurchases){border-color:#3a554d!important}
+
+html[data-theme="dark"] body :is(.sourceBadge,.sourceBadge.eu,.sourceBadge.un,.sourceBadge.mt,.sourceBadge.web){background:#1a332d!important;border-color:#36564d!important;color:#9bd9bf!important;box-shadow:inset 0 0 0 3px #0b1815!important;filter:none!important}
+html[data-theme="dark"] body .sourceBadge.eu{color:#91b8e8!important}html[data-theme="dark"] body .sourceBadge.un{color:#8fc7e6!important}html[data-theme="dark"] body .sourceBadge.mt{color:#eda38c!important}html[data-theme="dark"] body .sourceBadge.web{color:#b7beca!important}
+html[data-theme="dark"] body .legalSummary{background:#122820!important;border-color:#315145!important}
+html[data-theme="dark"] body .controlStatus article{background:#132b23!important;border-color:#315145!important}html[data-theme="dark"] body .controlStatus .verification{background:#32241e!important;border-color:#664a3d!important}
+html[data-theme="dark"] body .legalBody aside{background:#30221c!important;border-color:#654738!important}html[data-theme="dark"] body .legalBody aside p{color:#d0b7ac!important}
+html[data-theme="dark"] body .accountNext{background:#102d28!important;border-color:#30534a!important}
+html[data-theme="dark"] body .purchaseReceipt{background:transparent!important;border-color:transparent!important}
+html[data-theme="dark"] body .identifierGrid{background:transparent!important;border-color:transparent!important}
+html[data-theme="dark"] body .dashboardNotice{background:#153027!important;border-color:#315b4c!important;color:#bfe1d4!important}html[data-theme="dark"] body .dashboardNotice.error{background:#34231d!important;border-color:#744a39!important;color:#f0cbbb!important}
+
+@media print{html[data-theme="dark"] body,html[data-theme="dark"] body main{background:#fff!important;color:#142d2c!important}}
