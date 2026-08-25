@@ -43,14 +43,17 @@ test("screening API verifies a user and persists an audit record",async()=>{
   assert.match(source,/no screening credits/i);
 });
 
-test("EU screenings use the official Commission consolidated snapshot with safe fallback",async()=>{
+test("EU screenings require both official EU datasets and fail closed with a safe fallback",async()=>{
   const screening=await readFile(new URL("../app/api/screen/route.ts",import.meta.url),"utf8");
   assert.match(screening,/data\.europa\.eu\/apps\/eusanctionstracker/);
   assert.match(screening,/screenEU\(query,subjectType\)/);
+  assert.match(screening,/screenUN\(query,subjectType\)/);
   assert.match(screening,/source_snapshots/);
   assert.match(screening,/eu_consolidated/);
+  assert.match(screening,/eu_official_journal/);
   assert.match(screening,/screenEUConsolidatedCsv/);
-  assert.match(screening,/Official consolidated list unavailable/);
+  assert.match(screening,/screenEUOfficialJournalDataset/);
+  assert.match(screening,/One or more required official EU datasets are unavailable/);
   assert.match(screening,/manifest\.json/);
   assert.match(screening,/subjects\.jsonpack/);
   assert.match(screening,/jsonpack\.unpack/);

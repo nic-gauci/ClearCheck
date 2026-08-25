@@ -11,6 +11,13 @@ test("RPC compatibility fallback activates only for the named missing function",
   assert.equal(isMissingRpc({code:"42501",message:"permission denied"},"record_screening_v2"),false);
 });
 
+test("report downloads fall back to the authenticated legacy audit function",async()=>{
+  const route=await read("../app/api/reports/route.ts");
+  assert.match(route,/isMissingRpc\(error,"record_report_download_v2"\)/);
+  assert.match(route,/supabase\.rpc\("record_report_download"/);
+  assert.doesNotMatch(route,/getSupabaseAdmin\(\)\.rpc\("record_report_download"/);
+});
+
 test("Supabase tables are protected with RLS, scoped policies, and explicit grants",async()=>{
   const [foundation,hardening]=await Promise.all([read("../supabase/migrations/20260731183000_commercial_platform_foundation.sql"),read("../supabase/migrations/20260803020402_billing_audit_privacy_controls.sql")]);
   for(const table of["profiles","organisations","organisation_members","screenings","reports","audit_events","credit_ledger","billing_customers","compliance_settings","data_deletion_requests"]){assert.match(foundation,new RegExp(`alter table public\\.${table} enable row level security`,`i`))}
@@ -37,4 +44,6 @@ test("health monitoring fails closed when the official EU source is stale",async
   assert.match(health,/ageHours<=36/);
   assert.match(health,/status:sourceHealthy\?200:503/);
   assert.match(health,/euConsolidated/);
+  assert.match(health,/euOfficialJournal/);
+  assert.match(health,/consolidated\.healthy&&officialJournal\.healthy/);
 });

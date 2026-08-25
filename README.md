@@ -13,9 +13,9 @@ Requirements: Node.js 22.13 or newer and a Supabase project with the repository 
 
 Stripe live keys are rejected unless `ALLOW_LIVE_STRIPE=true`. Do not enable that flag until every item in `docs/launch-gates.md` is approved.
 
-## Official EU sanctions source
+## Official EU sanctions sources
 
-The primary EU source is a private daily snapshot of the European Commission Consolidated Financial Sanctions List. Obtain a dedicated crawler token through the Commission Financial Sanctions Files service and store it as the Supabase Edge Function secret `EU_FSF_CRAWLER_TOKEN`. Deploy the `sync-eu-sanctions` function and configure the existing scheduled sync. If the snapshot is failed or older than 36 hours, ClearCheck marks the EU check and overall screening incomplete.
+EU screening requires two daily snapshots: the European Commission Consolidated Financial Sanctions List and a generic extraction of named designations from recent restrictive-measures implementing regulations in the EU Publications Office Cellar. Obtain a dedicated crawler token through the Commission Financial Sanctions Files service and store it as the Supabase Edge Function secret `EU_FSF_CRAWLER_TOKEN`. Deploy the `sync-eu-sanctions` function and configure the existing scheduled sync; `npm run sources:sync-eu-journal` can refresh the Cellar snapshot manually. If either snapshot is failed or older than 36 hours, ClearCheck marks the EU check and overall screening incomplete.
 
 ## Governance
 
