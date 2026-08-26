@@ -1,4 +1,6 @@
 import LegalPage from "../LegalPage";
+import type { Metadata } from "next";
+export const metadata:Metadata={title:"Security — ClearCheck",description:"ClearCheck security, auditability and operational safeguards."};
 
 const sections=[{id:"controls",label:"Control status"},{id:"identity",label:"Identity and access"},{id:"isolation",label:"Tenant isolation"},{id:"audit",label:"Auditability"},{id:"payments",label:"Payments"},{id:"recovery",label:"Monitoring and recovery"},{id:"disclosure",label:"Responsible disclosure"}];
 

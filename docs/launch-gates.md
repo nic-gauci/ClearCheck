@@ -15,5 +15,6 @@ No public or live-payment launch is authorised until every gate below has a name
 - [ ] Monitoring alerts reach an accountable person for source staleness, application errors, webhook failures and uptime.
 - [ ] End-to-end testing covers signup, email verification, login, organisation isolation, payment, credit grant, screening, incomplete-source behavior, PDF evidence and privacy requests.
 - [ ] Incident response, vulnerability reporting, customer support and privacy-request contacts are published.
+- [ ] `CLEARCHECK_LEGAL_IDENTITY_COMPLETE=true` is set only after the verified operator name, registered address, registration/VAT details, monitored support and privacy contacts are published and counsel-approved.
 
 Passing automated tests is necessary but does not satisfy legal, licensing, backup or live-payment approval by itself.

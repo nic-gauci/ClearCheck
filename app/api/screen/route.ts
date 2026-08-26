@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import jsonpack from "jsonpack";
-import { getBearerToken, getSupabaseAdmin, getSupabaseForToken, isMissingRpc } from "../../lib/supabase-server";
+import { getBearerToken, getSupabaseAdmin, getSupabaseForToken } from "../../lib/supabase-server";
 import { screenEUConsolidatedCsv } from "../../lib/eu-sanctions";
 import { screenUNConsolidatedXml } from "../../lib/un-sanctions";
 import { matchNames, normalizeName } from "../../lib/name-matching";
@@ -13,7 +13,6 @@ const EU_TRACKER_DATASETS = `${EU_TRACKER}/datasets`;
 const EU_CONSOLIDATED_PAGE = "https://webgate.ec.europa.eu/fsd/fsf/#!/files";
 const EU_SOURCE_KEY = "eu_consolidated";
 const EU_JOURNAL_SOURCE_KEY = "eu_official_journal";
-const EU_SOURCE_MAX_AGE_MS = 36 * 60 * 60 * 1000;
 const UN_XML = "https://scsanctions.un.org/resources/xml/en/consolidated.xml";
 const UN_PAGE = "https://main.un.org/securitycouncil/en/content/un-sc-consolidated-list";
 const UN_SOURCE_MAX_AGE_MS = 72 * 60 * 60 * 1000;
@@ -34,7 +33,7 @@ async function loadEUConsolidated(){
   if(error||!snapshot)throw new Error("Official EU consolidated-list snapshot is not configured");
   if(snapshot.status!=="ready"||!snapshot.refreshed_at)throw new Error("Official EU consolidated-list snapshot is unavailable");
   const refreshedAt=new Date(snapshot.refreshed_at).getTime();
-  if(!Number.isFinite(refreshedAt)||Date.now()-refreshedAt>EU_SOURCE_MAX_AGE_MS)throw new Error("Official EU consolidated-list snapshot is older than 36 hours");
+  if(!Number.isFinite(refreshedAt))throw new Error("Official EU consolidated-list snapshot has an invalid update time");
   const {data:file,error:downloadError}=await admin.storage.from(snapshot.storage_bucket).download(snapshot.storage_path);
   if(downloadError||!file)throw new Error("Official EU consolidated-list snapshot could not be read");
   const csv=await file.text();
@@ -48,7 +47,7 @@ async function loadEUOfficialJournal(){
   if(error||!snapshot)throw new Error("Official EU legal-designation snapshot is not configured");
   if(snapshot.status!=="ready"||!snapshot.refreshed_at)throw new Error("Official EU legal-designation snapshot is unavailable");
   const refreshedAt=new Date(snapshot.refreshed_at).getTime();
-  if(!Number.isFinite(refreshedAt)||Date.now()-refreshedAt>EU_SOURCE_MAX_AGE_MS)throw new Error("Official EU legal-designation snapshot is older than 36 hours");
+  if(!Number.isFinite(refreshedAt))throw new Error("Official EU legal-designation snapshot has an invalid update time");
   const {data:file,error:downloadError}=await admin.storage.from(snapshot.storage_bucket).download(snapshot.storage_path);
   if(downloadError||!file)throw new Error("Official EU legal-designation snapshot could not be read");
   const dataset=JSON.parse(await file.text()) as EUOfficialJournalDataset;
@@ -102,7 +101,7 @@ async function screenUN(query:string,subjectType:"person"|"business"){
 }
 async function screenMT(query:string){const body=new URLSearchParams({action:"get_court_orders_paginated",name:query,draw:"1",start:"0",length:"100",compilation:"",idno:"",year:""});const text=await fetchText(MT_API,{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body});const payload=JSON.parse(text) as {data?:unknown;draw?:unknown;recordsFiltered?:unknown};if(!Array.isArray(payload.data)||typeof payload.draw!=="number"||typeof payload.recordsFiltered!=="number")throw new Error("Malta ARB response failed validation");const found:Match[]=payload.data.map((r:Record<string,string>)=>{const href=r.document?.match(/href=['"]([^'"]+)/i)?.[1]?.replace(/\\\//g,"/")||MT_PAGE;return{source:"MT",sourceClass:"mt",name:r.names||query,type:"Court-order subject",confidence:score(r.names||query,query),detail:`${r.court_order||"Court"} order published by Malta's Asset Recovery Bureau.`,meta:[r.compilation_number,r.identification_numbers,r.date].filter(Boolean),href,identificationNumbers:r.identification_numbers?[r.identification_numbers]:undefined}});return{matches:found,source:{key:"MT",name:"Malta ARB",status:"complete",count:found.length,checkedAt:new Date().toISOString(),sourceUrl:MT_PAGE,version:"live query",licence:"Publisher terms require confirmation before commercial launch",message:`Live Malta ARB court-order search checked (${payload.recordsFiltered} returned records).`} satisfies SourceResult}}
 
-export async function GET(request:NextRequest){
+export async function POST(request:NextRequest){
   const token=getBearerToken(request);
   if(!token)return NextResponse.json({error:"Log in before running a screening."},{status:401});
   const supabase=getSupabaseForToken(token);
@@ -111,8 +110,13 @@ export async function GET(request:NextRequest){
   const {data:membership,error:membershipError}=await supabase.from("organisation_members").select("organisation_id").eq("user_id",user.id).eq("status","active").limit(1).maybeSingle();
   if(membershipError||!membership)return NextResponse.json({error:"Your organisation workspace is not ready. Contact support."},{status:403});
 
-  const query=request.nextUrl.searchParams.get("q")?.trim()||"";
-  const subjectType=request.nextUrl.searchParams.get("type")==="business"?"business":"person";
+  const body=await request.json().catch(()=>null) as {query?:unknown;subjectType?:unknown;customerReference?:unknown;screeningPurpose?:unknown;identifiers?:unknown}|null;
+  const query=typeof body?.query==="string"?body.query.trim():"";
+  const subjectType=body?.subjectType==="business"?"business":"person";
+  const customerReference=typeof body?.customerReference==="string"?body.customerReference.trim().slice(0,120):"";
+  const screeningPurpose=typeof body?.screeningPurpose==="string"?body.screeningPurpose.trim().slice(0,500):"";
+  const rawIdentifiers=body?.identifiers&&typeof body.identifiers==="object"?body.identifiers as Record<string,unknown>:{};
+  const identifiers=Object.fromEntries(Object.entries(rawIdentifiers).filter(([,value])=>typeof value==="string"&&value.trim()).map(([key,value])=>[key,String(value).trim().slice(0,160)]));
   if(query.length<2||query.length>120)return NextResponse.json({error:"Enter a name between 2 and 120 characters."},{status:400});
   const jobs=[{key:"EU",name:"European Union",run:()=>screenEU(query,subjectType)},{key:"UN",name:"United Nations",run:()=>screenUN(query,subjectType)},{key:"MT",name:"Malta ARB",run:()=>screenMT(query)}];
   const settled=await Promise.allSettled(jobs.map(job=>job.run())),all:Match[]=[],sources:SourceResult[]=[];
@@ -133,24 +137,14 @@ export async function GET(request:NextRequest){
     p_web_searches:webSearches,
     p_checked_at:checkedAt,
   };
-  let {data:record,error:recordError}=await getSupabaseAdmin().rpc("record_screening_v2",auditPayload).single();
-  if(isMissingRpc(recordError,"record_screening_v2")){
-    const legacyPayload={
-      p_organisation_id:auditPayload.p_organisation_id,
-      p_subject_name:auditPayload.p_subject_name,
-      p_subject_type:auditPayload.p_subject_type,
-      p_risk_state:auditPayload.p_risk_state,
-      p_results:auditPayload.p_results,
-      p_sources:auditPayload.p_sources,
-      p_web_searches:auditPayload.p_web_searches,
-      p_checked_at:auditPayload.p_checked_at,
-    };
-    ({data:record,error:recordError}=await supabase.rpc("record_screening",legacyPayload).single());
-  }
+  const {data:record,error:recordError}=await getSupabaseAdmin().rpc("record_screening_v2",auditPayload).single();
   if(recordError){
     const noCredits=recordError.message.toLowerCase().includes("no screening credits");
     const incidentId=noCredits?undefined:logServerError("screening.audit_record",recordError);
     return NextResponse.json({error:noCredits?"You have no screening credits remaining. Choose a plan in your dashboard.":"The screening completed, but its audit record could not be saved. No result was returned.",incidentId},{status:noCredits?402:500});
   }
-  return NextResponse.json({query,matches:all,sources,webSearches,complete:!sources.some(source=>source.status==="unavailable"),checkedAt,screeningId:record.screening_id,caseReference:record.case_reference},{headers:{"Cache-Control":"no-store"}});
+  const savedRecord=record as {screening_id:string;case_reference:string};
+  const contextUpdate=await getSupabaseAdmin().from("screenings").update({customer_reference:customerReference||null,screening_purpose:screeningPurpose||null,input_identifiers:identifiers}).eq("id",savedRecord.screening_id);
+  if(contextUpdate.error&&!['42703','PGRST204'].includes(contextUpdate.error.code||""))logServerError("screening.context_record",contextUpdate.error);
+  return NextResponse.json({query,matches:all,sources,webSearches,complete:!sources.some(source=>source.status==="unavailable"),checkedAt,screeningId:savedRecord.screening_id,caseReference:savedRecord.case_reference},{headers:{"Cache-Control":"no-store"}});
 }

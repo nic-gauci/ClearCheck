@@ -1,4 +1,6 @@
 import LegalPage from "../LegalPage";
+import type { Metadata } from "next";
+export const metadata:Metadata={title:"Terms of use — ClearCheck",description:"Terms for using the ClearCheck screening workspace."};
 
 const sections=[{id:"service",label:"The service"},{id:"review",label:"Human review"},{id:"responsibilities",label:"Your responsibilities"},{id:"accounts",label:"Accounts and security"},{id:"third-party",label:"Third-party material"},{id:"billing",label:"Billing"},{id:"availability",label:"Availability and liability"},{id:"changes",label:"Changes"}];
 
@@ -8,7 +10,7 @@ export default function TermsPage(){return <LegalPage eyebrow="TERMS OF USE" tit
   <h2 id="responsibilities">3. Customer responsibilities</h2><p>Customers are responsible for having a lawful basis to conduct screening, providing accurate information, controlling team access, reviewing results, meeting regulatory obligations and deciding whether to onboard, reject, pause or escalate a relationship. ClearCheck must not be used for harassment, unlawful profiling or decisions prohibited by applicable law.</p>
   <h2 id="accounts">4. Accounts and security</h2><p>Users must keep credentials confidential, use individual accounts and notify their organisation of suspected misuse. Workspace owners control team roles. ClearCheck may restrict access to protect users, sources or the service.</p>
   <h2 id="third-party">5. Third-party material</h2><p>Official documents, web results and licensed datasets remain subject to their publishers’ terms. Links are provided for verification. Customers must not extract, republish or redistribute source data except where their licence or applicable law allows it.</p>
-  <h2 id="billing">6. Credits, subscriptions and refunds</h2><p>The checkout page shows the price, included credits, renewal period and applicable taxes before purchase. Credits are consumed when a completed screening audit record is created. Subscription changes and invoices are managed through the Stripe customer portal. Applicable refund, expiry and cancellation terms are shown with the selected plan.</p>
+  <h2 id="billing">6. Credits, subscriptions and refunds</h2><p>The checkout page shows the price, included credits, renewal period and applicable taxes before purchase. One credit is consumed only when a completed screening audit record is created. Credits do not currently expire. Subscription changes, cancellation and Stripe-hosted tax documents are managed through the customer portal. ClearCheck-generated purchase documents are receipts, not tax invoices. Live charging remains disabled until the operator, tax, refund and support details are legally complete.</p>
   <h2 id="availability">7. Availability and liability</h2><p>Sources can be delayed, changed or unavailable. ClearCheck records incomplete checks but cannot guarantee uninterrupted access or complete coverage. Mandatory legal rights are not excluded.</p>
   <h2 id="changes">8. Changes</h2><p>Material changes will be dated and communicated through the service. Continued use after an effective date may indicate acceptance where permitted by law.</p>
 </LegalPage>}

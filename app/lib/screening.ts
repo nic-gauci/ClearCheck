@@ -45,4 +45,15 @@ export type SavedScreening = {
   checked_at:string;
   completed_at:string|null;
   created_at:string;
+  customer_reference?:string|null;
+  screening_purpose?:string|null;
+  input_identifiers?:{dateOfBirth?:string;nationality?:string;identificationNumber?:string;country?:string;registrationNumber?:string};
+  review_status?:"unreviewed"|"under_review"|"closed_no_match"|"false_positive"|"confirmed_match"|"more_information_required"|"escalated";
+  review_notes?:string|null;
+  review_identifiers?:string|null;
+  reviewed_by?:string|null;
+  reviewed_by_display_name?:string|null;
+  reviewed_at?:string|null;
+  assigned_to?:string|null;
+  review_due_at?:string|null;
 };
