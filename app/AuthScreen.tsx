@@ -38,7 +38,8 @@ export default function AuthScreen({mode}:{mode:AuthMode}){
         });
         if(signUpError)throw signUpError;
         if(data.session){window.location.assign("/account");return}
-        setNotice("Account created. Check your inbox and confirm your email address, then log in.");
+        sessionStorage.setItem("clearcheck-confirm-email",email.trim());
+        window.location.assign("/check-email");return;
       }else{
         const {error:signInError}=await supabase.auth.signInWithPassword({email,password:submittedPassword});
         if(signInError)throw signInError;
@@ -68,7 +69,7 @@ export default function AuthScreen({mode}:{mode:AuthMode}){
         <div className="authOrb authOrbOne"/><div className="authOrb authOrbTwo"/>
         <div className="authStoryInner">
           <span className="authEyebrow"><i/> CLEARCHECK WORKSPACE</span>
-          <h1>{registering?<>A clearer way to manage <em>AML screening.</em></>:<>Welcome back to your <em>compliance workspace.</em></>}</h1>
+          <h1>{registering?<>A clearer way to manage <em>sanctions screening.</em></>:<>Welcome back to your <em>compliance workspace.</em></>}</h1>
           <p>{registering?"Create your workspace to run checks, keep an audit trail and prepare for saved screening history.":"Log in to continue screening people and businesses across official risk sources."}</p>
           <div className="authAssurance">
             <div><b>01</b><span><strong>Evidence-linked results</strong><small>Official source links beside every match</small></span></div>
@@ -91,9 +92,9 @@ export default function AuthScreen({mode}:{mode:AuthMode}){
             {registering&&<fieldset className="authGroup"><legend>Workspace</legend><label>Company or organisation <span>Optional</span><input name="company" autoComplete="organization" placeholder="Organisation name"/></label></fieldset>}
             <fieldset className="authGroup"><legend>{registering?"Security":"Account details"}</legend><label>Work email<input name="email" type="email" autoComplete="email" required placeholder="name@company.com" value={email} onChange={event=>setEmail(event.target.value)}/></label>
             <label>Password <span>{registering?"8+ characters":""}</span><div className="passwordField"><input name="password" type={showPassword?"text":"password"} autoComplete={registering?"new-password":"current-password"} minLength={registering?8:undefined} required placeholder={registering?"Create a secure password":"Enter your password"} value={password} onChange={event=>setPassword(event.target.value)}/><button type="button" onClick={()=>setShowPassword(value=>!value)} aria-label={showPassword?"Hide password":"Show password"}>{showPassword?"Hide":"Show"}</button></div></label>
-            {registering&&<><label>Confirm password<input name="confirmPassword" type={showPassword?"text":"password"} autoComplete="new-password" minLength={8} required placeholder="Repeat your password" value={confirmPassword} onChange={event=>setConfirmPassword(event.target.value)}/></label><div className="passwordChecks" aria-live="polite"><span className={password.length>=8?"met":""}>✓ At least 8 characters</span><span className={password&&password===confirmPassword?"met":""}>✓ Passwords match</span></div></>}
+            {registering&&<><label>Confirm password<input name="confirmPassword" type={showPassword?"text":"password"} autoComplete="new-password" minLength={8} required placeholder="Repeat your password" value={confirmPassword} onChange={event=>setConfirmPassword(event.target.value)}/></label><div className="passwordChecks" aria-live="polite"><span className={password.length>=8?"met":""}>✓ At least 8 characters</span><span className={/[a-z]/.test(password)&&/[A-Z]/.test(password)?"met":""}>✓ Upper and lowercase letters</span><span className={/\d/.test(password)&&/[^A-Za-z0-9]/.test(password)?"met":""}>✓ Number and symbol</span><span className={password&&password===confirmPassword?"met":""}>✓ Passwords match</span></div></>}
             </fieldset>
-            {!registering&&<div className="authOptions"><label><input type="checkbox" name="remember" defaultChecked/> Keep me signed in</label><button type="button" disabled={loading} onClick={resetPassword}>Forgot password?</button></div>}
+            {!registering&&<div className="authOptions"><span>Secure sessions stay signed in on this device until you log out.</span><button type="button" disabled={loading} onClick={resetPassword}>Forgot password?</button></div>}
             {registering&&<label className="termsCheck"><input type="checkbox" required/><span>I agree to the <Link href="/terms" target="_blank">Terms of Use</Link> and <Link href="/privacy" target="_blank">Privacy Policy</Link> and understand that screening results require human review.</span></label>}
             <button className="authSubmit" type="submit" disabled={loading}>{loading?"Please wait…":registering?"Create account":"Log in"}<span>→</span></button>
           </form>

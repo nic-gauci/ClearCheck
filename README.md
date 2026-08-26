@@ -15,7 +15,7 @@ Stripe live keys are rejected unless `ALLOW_LIVE_STRIPE=true`. Do not enable tha
 
 ## Official EU sanctions sources
 
-EU screening requires two daily snapshots: the European Commission Consolidated Financial Sanctions List and a generic extraction of named designations from recent restrictive-measures implementing regulations in the EU Publications Office Cellar. Obtain a dedicated crawler token through the Commission Financial Sanctions Files service and store it as the Supabase Edge Function secret `EU_FSF_CRAWLER_TOKEN`. Deploy the `sync-eu-sanctions` function and configure the existing scheduled sync; `npm run sources:sync-eu-journal` can refresh the Cellar snapshot manually. If either snapshot is failed or older than 36 hours, ClearCheck marks the EU check and overall screening incomplete.
+EU screening requires two regularly refreshed snapshots: the European Commission Consolidated Financial Sanctions List and a generic extraction of named designations from recent restrictive-measures implementing regulations in the EU Publications Office Cellar. Obtain a dedicated crawler token through the Commission Financial Sanctions Files service and store it as the Supabase Edge Function secret `EU_FSF_CRAWLER_TOKEN`. Deploy the `sync-eu-sanctions` function and configure the existing scheduled sync; `npm run sources:sync-eu-journal` can refresh the Cellar snapshot manually. The latest successfully downloaded and validated snapshot remains usable regardless of elapsed time. If either snapshot is missing, marked failed or fails validation, ClearCheck marks the EU check and overall screening incomplete.
 
 ## Governance
 

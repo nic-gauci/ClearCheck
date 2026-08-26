@@ -1,4 +1,6 @@
 import LegalPage from "../LegalPage";
+import type { Metadata } from "next";
+export const metadata:Metadata={title:"Privacy notice — ClearCheck",description:"How ClearCheck handles account, screening and billing information."};
 
 const sections=[{id:"scope",label:"Scope and roles"},{id:"information",label:"Information processed"},{id:"purposes",label:"Purposes and legal bases"},{id:"sources",label:"Sources and recipients"},{id:"retention",label:"Retention"},{id:"rights",label:"Rights and requests"},{id:"security",label:"Security"},{id:"contact",label:"Further information"}];
 
@@ -10,5 +12,5 @@ export default function PrivacyPage(){return <LegalPage eyebrow="PRIVACY & DATA 
   <h2 id="retention">5. Retention</h2><p>The workspace defaults to a five-year retention setting, reflecting common Maltese AML record-keeping requirements. The correct period depends on the customer, the relationship or transaction, legal holds and any direction from a competent authority. Automatic deletion is off by default. Organisations can record a retention preference and submit deletion requests from account settings.</p>
   <h2 id="rights">6. Rights and requests</h2><p>Depending on the circumstances, individuals may have rights of access, rectification, erasure, restriction, objection and data portability, and may complain to the Office of the Information and Data Protection Commissioner in Malta. Some rights can be limited where retention is required by law or necessary for legal claims. Requests are reviewed and recorded rather than deleting regulated records immediately.</p>
   <h2 id="security">7. Security</h2><p>ClearCheck uses authenticated sessions, organisation-scoped row-level permissions, encrypted provider connections and append-only audit records. No internet service is risk-free; suspected incidents should be reported promptly through the account workspace.</p>
-  <h2 id="contact">8. Further information</h2><p>ClearCheck’s operator identity, registered address and privacy contact will be displayed here and in the service agreement.</p>
+  <h2 id="contact">8. Operator and privacy contact</h2><p><strong>Private-beta launch restriction:</strong> the operator’s verified legal name, registered address, company or registration number, and monitored privacy email have not yet been supplied for publication. Public registrations and live payments must remain disabled until these details are inserted here and approved by Malta-qualified counsel. Privacy requests submitted in Account settings are recorded in the workspace in the meantime.</p>
 </LegalPage>}
