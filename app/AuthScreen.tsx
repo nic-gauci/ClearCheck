@@ -3,7 +3,9 @@
 import { FormEvent, useState } from "react";
 import Link from "next/link";
 import { getSupabaseBrowserClient } from "./lib/supabase";
+import { emailConfirmationUrl, pendingEmailKey } from "./lib/email-confirmation";
 import AppHeader from "./AppHeader";
+import PasswordVisibilityButton from "./PasswordVisibilityButton";
 
 type AuthMode = "login" | "register";
 
@@ -32,16 +34,23 @@ export default function AuthScreen({mode}:{mode:AuthMode}){
         const {data,error:signUpError}=await supabase.auth.signUp({
           email,password:submittedPassword,
           options:{
-            emailRedirectTo:`${window.location.origin}/account`,
+            emailRedirectTo:emailConfirmationUrl(window.location.origin),
             data:{first_name:firstName,last_name:lastName,full_name:`${firstName} ${lastName}`.trim(),company},
           },
         });
         if(signUpError)throw signUpError;
-        if(data.session){window.location.assign("/account");return}
-        sessionStorage.setItem("clearcheck-confirm-email",email.trim());
+        if(data.session){
+          await supabase.auth.signOut({scope:"local"});
+          throw new Error("Email confirmation is not enabled for this workspace. Contact ClearCheck support.");
+        }
+        sessionStorage.setItem(pendingEmailKey,email.trim());
         window.location.assign("/check-email");return;
       }else{
         const {error:signInError}=await supabase.auth.signInWithPassword({email,password:submittedPassword});
+        if(signInError?.code==="email_not_confirmed"){
+          sessionStorage.setItem(pendingEmailKey,email.trim());
+          window.location.assign("/check-email");return;
+        }
         if(signInError)throw signInError;
         const requested=new URLSearchParams(window.location.search).get("returnTo")||"/account";
         window.location.assign(requested.startsWith("/")&&!requested.startsWith("//")?requested:"/account");
@@ -91,7 +100,7 @@ export default function AuthScreen({mode}:{mode:AuthMode}){
             </div></fieldset>}
             {registering&&<fieldset className="authGroup"><legend>Workspace</legend><label>Company or organisation <span>Optional</span><input name="company" autoComplete="organization" placeholder="Organisation name"/></label></fieldset>}
             <fieldset className="authGroup"><legend>{registering?"Security":"Account details"}</legend><label>Work email<input name="email" type="email" autoComplete="email" required placeholder="name@company.com" value={email} onChange={event=>setEmail(event.target.value)}/></label>
-            <label>Password <span>{registering?"8+ characters":""}</span><div className="passwordField"><input name="password" type={showPassword?"text":"password"} autoComplete={registering?"new-password":"current-password"} minLength={registering?8:undefined} required placeholder={registering?"Create a secure password":"Enter your password"} value={password} onChange={event=>setPassword(event.target.value)}/><button type="button" onClick={()=>setShowPassword(value=>!value)} aria-label={showPassword?"Hide password":"Show password"}>{showPassword?"Hide":"Show"}</button></div></label>
+            <label>Password <span>{registering?"8+ characters":""}</span><div className="passwordField"><input name="password" type={showPassword?"text":"password"} autoComplete={registering?"new-password":"current-password"} minLength={registering?8:undefined} required placeholder={registering?"Create a secure password":"Enter your password"} value={password} onChange={event=>setPassword(event.target.value)}/><PasswordVisibilityButton visible={showPassword} onToggle={()=>setShowPassword(value=>!value)}/></div></label>
             {registering&&<><label>Confirm password<input name="confirmPassword" type={showPassword?"text":"password"} autoComplete="new-password" minLength={8} required placeholder="Repeat your password" value={confirmPassword} onChange={event=>setConfirmPassword(event.target.value)}/></label><div className="passwordChecks" aria-live="polite"><span className={password.length>=8?"met":""}>✓ At least 8 characters</span><span className={/[a-z]/.test(password)&&/[A-Z]/.test(password)?"met":""}>✓ Upper and lowercase letters</span><span className={/\d/.test(password)&&/[^A-Za-z0-9]/.test(password)?"met":""}>✓ Number and symbol</span><span className={password&&password===confirmPassword?"met":""}>✓ Passwords match</span></div></>}
             </fieldset>
             {!registering&&<div className="authOptions"><span>Secure sessions stay signed in on this device until you log out.</span><button type="button" disabled={loading} onClick={resetPassword}>Forgot password?</button></div>}

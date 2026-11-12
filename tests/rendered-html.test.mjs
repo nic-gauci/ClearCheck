@@ -15,7 +15,8 @@ test("server-renders the ClearCheck product home page",async()=>{
   assert.match(response.headers.get("content-type")??"",/^text\/html\b/i);
   const html=await response.text();
   assert.match(html,/<title>ClearCheck — Sanctions &amp; Public-Record Screening<\/title>/i);
-  assert.match(html,/Compliance checks/);
+  assert.match(html,/Sanctions screening[\s\S]*across EU, UN and Malta sources/);
+  assert.match(html,/EXAMPLE RESULT/);
   assert.match(html,/Log in to run screening/);
   assert.match(html,/Create your workspace/);
   assert.match(html,/25[\s\S]*complimentary credits/);
@@ -114,7 +115,9 @@ test("result review requires evidence and opens external web searches safely",as
   const page=await readFile(new URL("../app/page.tsx",import.meta.url),"utf8");
   assert.match(page,/Record review decision/);
   assert.match(page,/reviewIdentifiers/);
-  assert.match(page,/reviewNotes\.trim\(\)\.length<20/);
+  assert.match(page,/reviewValidationMessage/);
+  assert.match(page,/disabled=\{reviewBusy\}/);
+  assert.doesNotMatch(page,/disabled=\{reviewBusy\|\|reviewNotes/);
   assert.match(page,/false_positive/);
   assert.match(page,/confirmed_match/);
   assert.match(page,/more_information_required/);

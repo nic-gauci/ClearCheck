@@ -43,3 +43,6 @@ next-env.d.ts
 /outputs/
 /work/
 /supabase/.temp/
+
+# Local account recovery material
+/stripe_backup_code.txt

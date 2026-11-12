@@ -25,3 +25,7 @@ EU screening requires two regularly refreshed snapshots: the European Commission
 - `docs/launch-gates.md`: mandatory legal, security, data and payment approvals.
 
 The in-product legal pages are operational drafts. A Malta-qualified lawyer and privacy professional must approve the final service before public launch.
+
+## Signup email confirmation
+
+Enable **Confirm email** in the Supabase Auth email provider settings. Add the app's exact confirmation URL (for local development, `http://localhost:3000/check-email?confirm=1`) to Auth's allowed redirect URLs. Add the corresponding URL for each deployed environment. The Supabase signup template should use its standard confirmation link (`{{ .ConfirmationURL }}`). Configure SMTP for delivery to users outside the Supabase project team.

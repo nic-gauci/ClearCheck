@@ -3,4 +3,4 @@ import AuthScreen from "../AuthScreen";
 
 export const metadata:Metadata={title:"Log in — ClearCheck"};
 
-export default function LoginPage(){return <AuthScreen mode="login"/>}
+export default function LoginPage(){return <AuthScreen key="login" mode="login"/>}
