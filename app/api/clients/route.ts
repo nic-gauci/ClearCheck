@@ -24,7 +24,7 @@ export async function GET(request:Request){try{
     db.from("client_items").select("*").eq("organisation_id",org).eq("client_id",clientId).order("created_at",{ascending:false}).limit(500),
     db.from("client_documents").select("id,client_id,name,category,expires_at,size,created_at").eq("organisation_id",org).eq("client_id",clientId).order("created_at",{ascending:false}).limit(500),
     db.from("client_screenings").select("screening_id,screenings(id,subject_name,subject_type,case_reference,risk_state,match_count,review_status,checked_at)").eq("organisation_id",org).eq("client_id",clientId).limit(500),
-    db.from("audit_events").select("id,event_type,created_at,metadata").eq("organisation_id",org).eq("entity_type","client").eq("entity_id",clientId).order("created_at",{ascending:false}).limit(100),
+    db.from("audit_events").select("id,event_type,actor_user_id,created_at,metadata").eq("organisation_id",org).eq("entity_type","client").eq("entity_id",clientId).order("created_at",{ascending:false}).limit(100),
     db.from("screenings").select("id,subject_name,subject_type,case_reference,checked_at").eq("organisation_id",org).order("checked_at",{ascending:false}).limit(100),
   ]);
   if(error||ie||de||le||ae||se)throw error||ie||de||le||ae||se;

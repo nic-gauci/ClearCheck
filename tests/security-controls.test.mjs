@@ -18,15 +18,16 @@ test("report downloads use only the server-authorised audit function",async()=>{
 });
 
 test("Supabase tables are protected with RLS, scoped policies, and explicit grants",async()=>{
-  const [foundation,hardening]=await Promise.all([read("../supabase/migrations/20260731183000_commercial_platform_foundation.sql"),read("../supabase/migrations/20260803020402_billing_audit_privacy_controls.sql")]);
+  const [foundation,hardening,creditPolicy]=await Promise.all([read("../supabase/migrations/20260731183000_commercial_platform_foundation.sql"),read("../supabase/migrations/20260803020402_billing_audit_privacy_controls.sql"),read("../supabase/migrations/20261112011435_waive_incomplete_screening_credits.sql")]);
   for(const table of["profiles","organisations","organisation_members","screenings","reports","audit_events","credit_ledger","billing_customers","compliance_settings","data_deletion_requests"]){assert.match(foundation,new RegExp(`alter table public\\.${table} enable row level security`,`i`))}
   assert.match(foundation,/private\.is_org_member/);
   assert.match(foundation,/private\.has_org_role/);
   assert.match(hardening,/grant insert \(organisation_id,requested_by,reason,request_type\)/i);
   assert.match(hardening,/to service_role/i);
-  for(const fn of["process_stripe_event_v2","record_screening_v2","record_report_download_v2"]){
-    assert.match(hardening,new RegExp(`revoke execute on function public\\.${fn}\\([^;]+from public,\\s*anon,\\s*authenticated`,`is`));
-    assert.match(hardening,new RegExp(`grant execute on function public\\.${fn}\\([^;]+to service_role`,`is`));
+  for(const fn of["process_stripe_event_v2","record_screening_v2","record_screening_v3","record_report_download_v2"]){
+    const migration=fn==="record_screening_v3"?creditPolicy:hardening;
+    assert.match(migration,new RegExp(`revoke execute on function public\\.${fn}\\([^;]+from public,\\s*anon,\\s*authenticated`,`is`));
+    assert.match(migration,new RegExp(`grant execute on function public\\.${fn}\\([^;]+to service_role`,`is`));
   }
 });
 

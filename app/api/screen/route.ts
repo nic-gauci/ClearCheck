@@ -137,14 +137,18 @@ export async function POST(request:NextRequest){
     p_web_searches:webSearches,
     p_checked_at:checkedAt,
   };
-  const {data:record,error:recordError}=await getSupabaseAdmin().rpc("record_screening_v2",auditPayload).single();
+  const {data:record,error:recordError}=await getSupabaseAdmin().rpc("record_screening_v3",auditPayload).single();
   if(recordError){
+    if(recordError.code==="PGRST202"){
+      const incidentId=logServerError("screening.credit_policy_unavailable",recordError);
+      return NextResponse.json({error:"Screening is temporarily unavailable. No credit was used.",incidentId},{status:503});
+    }
     const noCredits=recordError.message.toLowerCase().includes("no screening credits");
     const incidentId=noCredits?undefined:logServerError("screening.audit_record",recordError);
     return NextResponse.json({error:noCredits?"You have no screening credits remaining. Choose a plan in your dashboard.":"The screening completed, but its audit record could not be saved. No result was returned.",incidentId},{status:noCredits?402:500});
   }
-  const savedRecord=record as {screening_id:string;case_reference:string};
+  const savedRecord=record as {screening_id:string;case_reference:string;credits_charged:number};
   const contextUpdate=await getSupabaseAdmin().from("screenings").update({customer_reference:customerReference||null,screening_purpose:screeningPurpose||null,input_identifiers:identifiers}).eq("id",savedRecord.screening_id);
   if(contextUpdate.error&&!['42703','PGRST204'].includes(contextUpdate.error.code||""))logServerError("screening.context_record",contextUpdate.error);
-  return NextResponse.json({query,matches:all,sources,webSearches,complete:!sources.some(source=>source.status==="unavailable"),checkedAt,screeningId:savedRecord.screening_id,caseReference:savedRecord.case_reference},{headers:{"Cache-Control":"no-store"}});
+  return NextResponse.json({query,matches:all,sources,webSearches,complete:savedRecord.credits_charged===1,creditsCharged:savedRecord.credits_charged,checkedAt,screeningId:savedRecord.screening_id,caseReference:savedRecord.case_reference},{headers:{"Cache-Control":"no-store"}});
 }

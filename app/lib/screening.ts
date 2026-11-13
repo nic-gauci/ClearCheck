@@ -38,6 +38,7 @@ export type SavedScreening = {
   status:string;
   risk_state:"clear"|"review"|"incomplete";
   match_count:number;
+  credits_charged?:number;
   source_count:number;
   results:ScreeningMatch[];
   sources:ScreeningSource[];

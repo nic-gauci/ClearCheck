@@ -1,4 +1,5 @@
 import { jsPDF } from "jspdf";
+import { describeScreeningCoverage } from "./screening-coverage.js";
 import type { SavedScreening, ScreeningMatch, ScreeningSource } from "./screening";
 
 type RGB=[number,number,number];
@@ -46,8 +47,7 @@ export function buildScreeningReport(screening:SavedScreening){
   const pdf=new jsPDF({unit:"mm",format:"a4",compress:true});
   const pageW=210,pageH=297,margin=18,contentW=pageW-margin*2,bottom=276;
   let y=0;
-  const incomplete=screening.sources.some(source=>source.status==="unavailable");
-  const completed=screening.sources.filter(source=>source.status==="complete").length;
+  const {completed,total,incomplete,noMatches,missingSources}=describeScreeningCoverage(screening.sources,screening.risk_state==="incomplete");
   const officialSources=screening.sources.filter(source=>source.key!=="WEB");
 
   const setText=(size:number,color:RGB=COLOURS.ink,style:"normal"|"bold"="normal")=>{
@@ -141,17 +141,17 @@ export function buildScreeningReport(screening:SavedScreening){
   }
 
   const reportStatus=incomplete?"SCREENING INCOMPLETE - OFFICIAL SOURCE UNAVAILABLE":screening.results.length?"POTENTIAL NAME SIMILARITY - MANUAL REVIEW REQUIRED":"NO OFFICIAL-LIST NAME SIMILARITY IDENTIFIED";
-  const outcomeNote=incomplete?"Do not treat this screening as complete until every required official source has been checked.":screening.results.length?"A name score is not an identity determination. Compare identifiers and current official evidence.":"Official-list screening completed. Adverse-media review and professional judgement remain required.";
+  const outcomeNote=incomplete?`${missingSources ? missingSources+" " : ""}Do not treat this screening as complete until every required official source has been checked.`:screening.results.length?"A name score is not an identity determination. Compare identifiers and current official evidence.":"Official-list screening completed. Adverse-media review and professional judgement remain required.";
   ensure(29);const outcomeTop=y;pdf.setDrawColor(...(incomplete||screening.results.length?[218,177,158] as RGB:[181,208,198] as RGB));pdf.setLineWidth(.25);pdf.setFillColor(...(incomplete||screening.results.length?COLOURS.orangeSoft:COLOURS.greenSoft));pdf.rect(margin,outcomeTop,contentW,24,"FD");pdf.setFillColor(...(incomplete||screening.results.length?COLOURS.orange:COLOURS.green));pdf.rect(margin,outcomeTop,1.5,24,"F");
   setText(6.2,incomplete||screening.results.length?COLOURS.orange:COLOURS.green,"bold");pdf.text("SCREENING OUTCOME",margin+5,outcomeTop+6);
   setText(9.5,COLOURS.ink,"bold");pdf.text(reportStatus,margin+5,outcomeTop+12);
   setText(7,COLOURS.muted);pdf.text(linesFor(outcomeNote,contentW-55).slice(0,2),margin+5,outcomeTop+17,{lineHeightFactor:1.25});
-  setText(6,COLOURS.muted,"bold");pdf.text("OFFICIAL SOURCES",pageW-margin-5,outcomeTop+6,{align:"right"});setText(10,COLOURS.ink,"bold");pdf.text(`${completed}/${officialSources.length}`,pageW-margin-5,outcomeTop+12,{align:"right"});
+  setText(6,COLOURS.muted,"bold");pdf.text("OFFICIAL SOURCES",pageW-margin-5,outcomeTop+6,{align:"right"});setText(10,COLOURS.ink,"bold");pdf.text(`${completed}/${total}`,pageW-margin-5,outcomeTop+12,{align:"right"});
   setText(6,COLOURS.muted,"bold");pdf.text("POTENTIAL RESULTS",pageW-margin-5,outcomeTop+17,{align:"right"});setText(9,COLOURS.ink,"bold");pdf.text(String(screening.results.length),pageW-margin-5,outcomeTop+22,{align:"right"});y=outcomeTop+31;
 
   section("01  |  SOURCE COVERAGE","Official sources checked",20);screening.sources.forEach(sourceCard);y+=3;
-  section("02  |  OFFICIAL-LIST RESULTS",screening.results.length?`${screening.results.length} potential name similarit${screening.results.length===1?"y":"ies"}`:"No potential name similarities",screening.results.length?59:22);
-  if(!screening.results.length)paragraph("No name similarities were identified in the official sanctions and Malta court-order sources that completed at the recorded time. This is not a determination that the subject is free from risk.",{size:8.2,color:COLOURS.ink});
+  section("02  |  OFFICIAL-LIST RESULTS",screening.results.length?`${screening.results.length} potential name similarit${screening.results.length===1?"y":"ies"}`:noMatches,screening.results.length?59:22);
+  if(!screening.results.length)paragraph(incomplete?(missingSources||"Official source coverage is incomplete."):"Continue with manual review and verify relevant identifiers.",{size:8.2,color:COLOURS.ink});
   screening.results.forEach(matchCard);
 
   if(screening.review_status||screening.review_notes){

@@ -24,3 +24,14 @@ test("publisher PDF routes and HTML evidence use their respective search fragmen
     "https://example.org/decision#annex:~:text=Jean%2DPaul%2C%20D%E2%80%99Amato");
   assert.equal(matchedEvidenceHref({ href: "javascript:alert(1)", name, source: "EU" }), undefined);
 });
+
+test("EUR-Lex TXT/PDF paths use PDF viewer search rather than HTML text fragments", () => {
+  const href = matchedEvidenceHref({
+    href: "https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=OJ:L_202502035",
+    name: "Evraz Nyrt.",
+    source: "EU",
+  });
+  const url = new URL(href);
+  assert.equal(url.searchParams.get("uri"), "OJ:L_202502035");
+  assert.equal(new URLSearchParams(url.hash.slice(1)).get("search"), "Evraz Nyrt.");
+});

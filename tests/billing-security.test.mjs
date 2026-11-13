@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { isMissingStripeV2Function, normalizeStripeEvent, stripeProcessingReference } from "../app/lib/billing-events.ts";
-import { resolveAppUrl } from "../app/lib/stripe.ts";
+import { matchesStripePlan, resolveAppUrl } from "../app/lib/stripe.ts";
 
 const read=(path)=>readFile(new URL(path,import.meta.url),"utf8");
 
@@ -60,4 +60,22 @@ test("server logs use incident references without logging searched names",async(
   const logger=await read("../app/lib/server-log.ts");
   assert.match(logger,/incidentId/);
   assert.doesNotMatch(logger,/error\.message|stack/);
+});
+
+
+test("checkout prices match the catalogue amount, currency and billing interval", () => {
+  const single = { billing_mode: "single", price_cents: 900 };
+  const price = { active: true, currency: "eur", unit_amount: 900, billing_scheme: "per_unit", type: "one_time", recurring: null };
+  assert.equal(matchesStripePlan(price, single), true);
+  assert.equal(matchesStripePlan({ ...price, currency: "usd" }, single), false);
+  assert.equal(matchesStripePlan({ ...price, unit_amount: 990 }, single), false);
+  assert.equal(matchesStripePlan({ ...price, active: false }, single), false);
+
+  const monthly = { billing_mode: "monthly", price_cents: 24900 };
+  const recurring = { interval: "month", interval_count: 1, usage_type: "licensed" };
+  const subscription = { ...price, unit_amount: 24900, type: "recurring", recurring };
+  assert.equal(matchesStripePlan(subscription, monthly), true);
+  assert.equal(matchesStripePlan({ ...subscription, recurring: { ...recurring, interval: "year" } }, monthly), false);
+  assert.equal(matchesStripePlan({ ...subscription, recurring: { ...recurring, interval_count: 2 } }, monthly), false);
+  assert.equal(matchesStripePlan({ ...price, unit_amount: 24900 }, monthly), false);
 });

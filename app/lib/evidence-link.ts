@@ -13,7 +13,7 @@ export function matchedEvidenceHref({ href, name, source }: Pick<ScreeningMatch,
   if (!phrase) return url.href;
 
   const isPdf = /\.pdf$/i.test(url.pathname) ||
-    (url.hostname === "eur-lex.europa.eu" && /^\/legal-content\/(?:[a-z]{2}\/)?PDF\/?$/i.test(url.pathname));
+    (url.hostname === "eur-lex.europa.eu" && /^\/legal-content\/(?:[a-z]{2}\/)?(?:TXT\/)?PDF\/?$/i.test(url.pathname));
   const fragment = url.hash.slice(1);
 
   if (isPdf) {

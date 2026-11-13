@@ -32,6 +32,19 @@ export async function stripeRead(path:string,params=new URLSearchParams()){
   return payload;
 }
 
+export function matchesStripePlan(
+  price: Record<string, unknown>,
+  plan: { price_cents: number; billing_mode: string },
+) {
+  if (price.active !== true || price.currency !== "eur" || price.unit_amount !== plan.price_cents ||
+      price.billing_scheme !== "per_unit" || price.transform_quantity != null) return false;
+  if (plan.billing_mode !== "monthly") return price.type === "one_time" && price.recurring == null;
+
+  const recurring = price.recurring as { interval?: string; interval_count?: number; usage_type?: string } | null;
+  return price.type === "recurring" && recurring?.interval === "month" &&
+    recurring.interval_count === 1 && recurring.usage_type === "licensed";
+}
+
 function isLocalHost(hostname:string){return hostname==="localhost"||hostname==="127.0.0.1"||hostname==="[::1]"}
 
 export function resolveAppUrl(configuredValue:string|undefined,requestOrigin?:string){
