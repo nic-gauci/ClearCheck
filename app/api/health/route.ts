@@ -6,7 +6,7 @@ export const dynamic="force-dynamic";
 const UN_XML="https://scsanctions.un.org/resources/xml/en/consolidated.xml";
 const MT_API="https://assetrecovery.mt/wp-admin/admin-ajax.php";
 const CACHE_MS=5*60*1000;
-type HealthItem={status:"ready"|"attention"|"unavailable";healthy:boolean;refreshAttention?:boolean;lastUpdated:string|null;checkedAt:string;ageHours:number|null;rowCount:number;message:string;version?:string|null};
+type HealthItem={status:"ready"|"attention"|"unavailable";healthy:boolean;refreshAttention?:boolean;lastUpdated:string|null;lastSuccessfulDownload?:string|null;checkedAt:string;ageHours:number|null;rowCount:number;message:string;version?:string|null};
 let liveCache:{at:number;unConsolidated:HealthItem;maltaArb:HealthItem}|undefined;
 
 async function checkedFetch(url:string,options?:RequestInit){
@@ -48,10 +48,10 @@ export async function GET(){
   const time=new Date().toISOString();
   try{
     const [{data,error},live]=await Promise.all([
-      getSupabaseAdmin().from("source_snapshots").select("source_key,status,refreshed_at,row_count,checksum_sha256,error_message").in("source_key",["eu_consolidated","eu_official_journal"]),
+      getSupabaseAdmin().from("source_snapshots").select("source_key,status,refreshed_at,source_last_modified,row_count,checksum_sha256").in("source_key",["eu_consolidated","eu_official_journal"]),
       liveHealth(time),
     ]);
-    const statusFor=(key:string,minRows:number):HealthItem=>{const source=data?.find(item=>item.source_key===key),refreshedAt=source?.refreshed_at?new Date(source.refreshed_at).getTime():NaN,ageHours=Number.isFinite(refreshedAt)?(Date.now()-refreshedAt)/3_600_000:null,healthy=!error&&source?.status==="ready"&&Number.isFinite(refreshedAt)&&Number(source.row_count)>=minRows&&Boolean(source.checksum_sha256),refreshAttention=healthy&&ageHours!>48;return{status:healthy?(refreshAttention?"attention":"ready"):"unavailable",lastUpdated:source?.refreshed_at||null,checkedAt:time,ageHours:ageHours===null?null:Math.round(ageHours*10)/10,rowCount:Number(source?.row_count)||0,version:source?.checksum_sha256||null,healthy,refreshAttention,message:healthy?(refreshAttention?`Latest successful snapshot validated (${Number(source?.row_count)||0} records), but the scheduled refresh confirmation is overdue.`:`Latest refresh confirmed (${Number(source?.row_count)||0} records).`):source?.error_message||"Snapshot is missing or failed validation."}};
+    const statusFor=(key:string,minRows:number):HealthItem=>{const source=data?.find(item=>item.source_key===key),refreshedAt=source?.refreshed_at?new Date(source.refreshed_at).getTime():NaN,ageHours=Number.isFinite(refreshedAt)?(Date.now()-refreshedAt)/3_600_000:null,healthy=!error&&source?.status==="ready"&&Number.isFinite(refreshedAt)&&Number(source.row_count)>=minRows&&Boolean(source.checksum_sha256),refreshAttention=healthy&&ageHours!>48;return{status:healthy?(refreshAttention?"attention":"ready"):"unavailable",lastUpdated:source?.source_last_modified||null,lastSuccessfulDownload:source?.refreshed_at||null,checkedAt:time,ageHours:ageHours===null?null:Math.round(ageHours*10)/10,rowCount:Number(source?.row_count)||0,version:source?.checksum_sha256||null,healthy,refreshAttention,message:healthy?(refreshAttention?`Latest successful snapshot validated (${Number(source?.row_count)||0} records), but the scheduled refresh confirmation is overdue.`:`Latest refresh confirmed (${Number(source?.row_count)||0} records).`):"The latest snapshot is unavailable. Check the scheduled sync."}};
     const euConsolidated=statusFor("eu_consolidated",500),euOfficialJournal=statusFor("eu_official_journal",10);
     const sources={euConsolidated,euOfficialJournal,unConsolidated:live.unConsolidated,maltaArb:live.maltaArb};
     const sourceHealthy=Object.values(sources).every(source=>source.healthy);

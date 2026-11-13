@@ -29,6 +29,10 @@ const worker = {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
 
+    if (url.pathname.startsWith("/assets/")) {
+      return env.ASSETS.fetch(request);
+    }
+
     if (url.pathname === "/_vinext/image") {
       const allowedWidths = [...DEFAULT_DEVICE_SIZES, ...DEFAULT_IMAGE_SIZES];
       return handleImageOptimization(request, {
@@ -40,7 +44,20 @@ const worker = {
       }, allowedWidths);
     }
 
-    return handler.fetch(request, env, ctx);
+    const response = await handler.fetch(request, env, ctx);
+    const contentType = response.headers.get("content-type") ?? "";
+    if (!contentType.startsWith("text/html") && !contentType.startsWith("text/x-component")) {
+      return response;
+    }
+
+    // Finish rendering the document in the Worker before returning it to the host.
+    // Navigation payloads can continue streaming.
+    const body = contentType.startsWith("text/html") && request.method !== "HEAD"
+      ? await response.arrayBuffer()
+      : response.body;
+    const uncached = new Response(body, response);
+    uncached.headers.set("Cache-Control", "private, no-store");
+    return uncached;
   },
 };
 

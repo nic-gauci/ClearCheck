@@ -10,6 +10,10 @@ begin
  (approver,approver::text||'@example.invalid','{"first_name":"Synthetic","last_name":"Approver"}');
  insert into public.organisations(id,name) values(org,'Synthetic QA workspace'),(other_org,'Synthetic other workspace');
  insert into public.organisation_members(organisation_id,user_id,role) values(org,actor,'owner'),(other_org,outsider,'reviewer'),(org,approver,'admin');
+ c:=public.client_workspace_mutate(actor,org,null,'create','{"name":"Synthetic client without review date","subject_type":"person","next_review":null}');
+ if exists(select 1 from public.clients where id=(c->>'id')::uuid and next_review is not null) then
+   raise exception 'Blank review date was populated';
+ end if;
  template:=public.client_template_save(actor,org,null,'Synthetic template','[{"key":"custom_funds","label":"Source of funds","type":"textarea","required":true}]','[{"title":"Request evidence","kind":"request","due_days":7}]');
  templated:=public.client_create_from_template(actor,org,(template->>'id')::uuid,'{"name":"Synthetic templated client","subject_type":"person"}');
  if templated->'template_reference'->>'version'<>'1' or jsonb_array_length(templated->'onboarding_schema')<>1 then raise exception 'Template snapshot missing';end if;

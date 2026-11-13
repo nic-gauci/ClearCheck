@@ -13,33 +13,47 @@ test("server-renders the ClearCheck product home page",async()=>{
   const response=await render();
   assert.equal(response.status,200);
   assert.match(response.headers.get("content-type")??"",/^text\/html\b/i);
+  assert.equal(response.headers.get("cache-control"),"private, no-store");
   const html=await response.text();
   assert.match(html,/<title>ClearCheck — Sanctions &amp; Public-Record Screening<\/title>/i);
   assert.match(html,/Sanctions screening[\s\S]*across EU, UN and Malta sources/);
   assert.match(html,/EXAMPLE RESULT/);
   assert.match(html,/Log in to run screening/);
+  assert.doesNotMatch(html,/name="password"|aria-label="Full legal name"/);
   assert.match(html,/Create your workspace/);
   assert.match(html,/25[\s\S]*complimentary credits/);
+  assert.match(html,/href="\/cookies"/);
+  assert.match(html,/href="\/terms#refunds"/);
   assert.doesNotMatch(html,/codex-preview|Your site is taking shape|react-loading-skeleton/i);
 });
 
+test("the screening route starts behind the workspace login check",async()=>{
+  const response=await render("/screening");
+  assert.equal(response.status,200);
+  const html=await response.text();
+  assert.match(html,/Opening screening/);
+  assert.doesNotMatch(html,/aria-label="Full legal name"|See what a screening returns/);
+});
+
 test("renders governance pages and removes the starter preview",async()=>{
-  for(const [path,heading] of [["/privacy","Privacy notice"],["/terms","ClearCheck service terms"],["/security","How ClearCheck protects the workspace"],["/providers","Sources and licensing"]]){
+  for(const [path,heading] of [["/cookies","Cookies and browser storage"],["/privacy","Privacy notice"],["/terms","ClearCheck service terms"],["/security","How ClearCheck protects the workspace"],["/providers","Sources and licensing"]]){
     const response=await render(path),html=await response.text();
     assert.equal(response.status,200);
     assert.match(html,new RegExp(heading,"i"));
     assert.match(html,/Back to website/);
     assert.match(html,/On this page/);
+    if(path==="/terms")assert.match(html,/id="refunds"/);
+    if(path==="/privacy")assert.match(html,/href="\/account\?tab=settings"/);
   }
   await assert.rejects(access(new URL("../app/_sites-preview",import.meta.url)));
 });
 
 test("shared headers provide a persistent accessible light and dark theme",async()=>{
-  const [header,layout,styles]=await Promise.all([readFile(new URL("../app/AppHeader.tsx",import.meta.url),"utf8"),readFile(new URL("../app/layout.tsx",import.meta.url),"utf8"),readFile(new URL("../app/globals.css",import.meta.url),"utf8")]);
-  assert.match(header,/className={`themeToggle \$\{theme\}`}/);
-  assert.match(header,/Switch to light mode/);
-  assert.match(header,/Switch to dark mode/);
-  assert.match(header,/localStorage\.setItem\("clearcheck-theme",next\)/);
+  const [themeButton,layout,styles]=await Promise.all([readFile(new URL("../app/ThemeButton.tsx",import.meta.url),"utf8"),readFile(new URL("../app/layout.tsx",import.meta.url),"utf8"),readFile(new URL("../app/globals.css",import.meta.url),"utf8")]);
+  assert.match(themeButton,/className="themeToggle"/);
+  assert.match(themeButton,/Switch to light mode/);
+  assert.match(themeButton,/Switch to dark mode/);
+  assert.match(themeButton,/localStorage\.setItem\("clearcheck-theme",next\)/);
   assert.match(layout,/prefers-color-scheme: dark/);
   assert.match(layout,/clearcheck-theme/);
   assert.match(styles,/Final dark palette/);
@@ -87,7 +101,7 @@ test("account overview shows monitored EU, UN, and Malta source health",async()=
 });
 
 test("screening API verifies a user and persists an audit record",async()=>{
-  const [source,page]=await Promise.all([readFile(new URL("../app/api/screen/route.ts",import.meta.url),"utf8"),readFile(new URL("../app/page.tsx",import.meta.url),"utf8")]);
+  const [source,page]=await Promise.all([readFile(new URL("../app/api/screen/route.ts",import.meta.url),"utf8"),readFile(new URL("../app/screening/page.tsx",import.meta.url),"utf8")]);
   assert.match(source,/export async function POST/);
   assert.doesNotMatch(source,/nextUrl\.searchParams|get\("q"\)/);
   assert.match(page,/fetch\("\/api\/screen",\{method:"POST"/);
@@ -96,14 +110,14 @@ test("screening API verifies a user and persists an audit record",async()=>{
   assert.match(source,/getBearerToken/);
   assert.match(source,/auth\.getUser/);
   assert.match(source,/record_screening/);
-  assert.match(source,/getSupabaseAdmin\(\)\.rpc\("record_screening_v2"/);
+  assert.match(source,/getSupabaseAdmin\(\)\.rpc\("record_screening_v3"/);
   assert.doesNotMatch(source,/supabase\.rpc\("record_screening"/);
   assert.match(source,/no screening credits/i);
 });
 
 test("result downloads use the shared professional report and local action errors",async()=>{
-  const [page,styles]=await Promise.all([readFile(new URL("../app/page.tsx",import.meta.url),"utf8"),readFile(new URL("../app/globals.css",import.meta.url),"utf8")]);
-  assert.match(page,/import \{ downloadScreeningReport \} from "\.\/lib\/report"/);
+  const [page,styles]=await Promise.all([readFile(new URL("../app/screening/page.tsx",import.meta.url),"utf8"),readFile(new URL("../app/globals.css",import.meta.url),"utf8")]);
+  assert.match(page,/import \{ downloadScreeningReport \} from "\.\.\/lib\/report"/);
   assert.match(page,/downloadScreeningReport\(currentRecord\)/);
   assert.doesNotMatch(page,/import \{ jsPDF \}|new jsPDF/);
   assert.match(page,/reportActionError/);
@@ -112,7 +126,7 @@ test("result downloads use the shared professional report and local action error
 });
 
 test("result review requires evidence and opens external web searches safely",async()=>{
-  const page=await readFile(new URL("../app/page.tsx",import.meta.url),"utf8");
+  const page=await readFile(new URL("../app/screening/page.tsx",import.meta.url),"utf8");
   assert.match(page,/Record review decision/);
   assert.match(page,/reviewIdentifiers/);
   assert.match(page,/reviewValidationMessage/);
@@ -126,7 +140,7 @@ test("result review requires evidence and opens external web searches safely",as
 });
 
 test("source coverage highlights completed sources with potential matches",async()=>{
-  const [page,styles]=await Promise.all([readFile(new URL("../app/page.tsx",import.meta.url),"utf8"),readFile(new URL("../app/globals.css",import.meta.url),"utf8")]);
+  const [page,styles]=await Promise.all([readFile(new URL("../app/screening/page.tsx",import.meta.url),"utf8"),readFile(new URL("../app/globals.css",import.meta.url),"utf8")]);
   assert.match(page,/hasPotentialMatch=s\.status==="complete"&&s\.count>0/);
   assert.match(page,/Potential match/);
   assert.match(styles,/article\.potential/);

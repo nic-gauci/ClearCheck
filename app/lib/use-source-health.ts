@@ -6,6 +6,7 @@ type SourceHealthItem = {
   healthy: boolean;
   refreshAttention?: boolean;
   lastUpdated: string | null;
+  lastSuccessfulDownload?: string | null;
   checkedAt?: string | null;
   message?: string;
 };

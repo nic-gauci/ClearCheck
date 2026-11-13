@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getBearerToken, getSupabaseAdmin, getSupabaseForToken } from "../../../lib/supabase-server";
-import { getAppUrl, stripePrices, stripeRead, stripeRequest } from "../../../lib/stripe";
+import { getAppUrl, matchesStripePlan, stripePrices, stripeRead, stripeRequest } from "../../../lib/stripe";
 import { logServerError } from "../../../lib/server-log";
 
 export const dynamic="force-dynamic";
@@ -14,8 +14,10 @@ export async function POST(request:NextRequest){
     if(!priceId)return NextResponse.json({error:"Stripe price IDs have not been connected yet. Add them before enabling live checkout."},{status:503});
     const {data:membership}=await supabase.from("organisation_members").select("organisation_id,role").eq("user_id",user.id).eq("status","active").limit(1).maybeSingle();
     if(!membership||!["owner","admin"].includes(membership.role))return NextResponse.json({error:"Only organisation owners and admins can manage billing."},{status:403});
-    const {data:plan}=await supabase.from("plans").select("id,billing_mode,credits").eq("id",planId).eq("active",true).maybeSingle();
+    const {data:plan}=await supabase.from("plans").select("id,billing_mode,price_cents").eq("id",planId).eq("active",true).maybeSingle();
     if(!plan)return NextResponse.json({error:"That plan is not available."},{status:400});
+    const price=await stripeRead(`prices/${encodeURIComponent(priceId)}`);
+    if(!matchesStripePlan(price,plan))throw new Error(`Stripe price does not match the ClearCheck catalogue for plan ${plan.id}.`);
     const {data:billing}=await admin.from("billing_customers").select("stripe_customer_id").eq("organisation_id",membership.organisation_id).maybeSingle();
     let customerId=billing?.stripe_customer_id as string|undefined;
     if(customerId){

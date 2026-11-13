@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { sampleScreening } from "../app/lib/sample-screening.ts";
 import { buildScreeningReport } from "../app/lib/report.ts";
 
 const source=(key,name,version)=>({key,name,status:"complete",count:0,checkedAt:"2026-08-25T00:46:00Z",lastUpdated:"2026-08-25T00:30:00Z",version});
@@ -19,5 +20,19 @@ test("screening reports wrap long audit data and paginate without invalid drawin
   for(let page=1;page<=pages;page++){
     const commands=(pdf.internal.pages[page]||[]).join("\n");
     assert.doesNotMatch(commands,/\b(?:NaN|undefined)\b/);
+  }
+});
+
+test("both public samples generate readable PDFs and label incomplete coverage",()=>{
+  for(const incomplete of [false,true]){
+    const pdf=buildScreeningReport(sampleScreening(incomplete));
+    const commands=pdf.internal.pages.slice(1).flat().join("\n");
+    assert.match(commands,/Example Harbour Trading Ltd/);
+    assert.match(commands,incomplete?/SCREENING INCOMPLETE/:/POTENTIAL NAME SIMILARITY/);
+    if(incomplete){
+      assert.match(commands,/Sources not checked: European Union/);
+      assert.match(commands,/No matches on the 2 official sources checked/);
+    }
+    assert.ok(pdf.output("arraybuffer").byteLength>3000);
   }
 });
